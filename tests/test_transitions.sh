@@ -71,4 +71,21 @@ bash "$AGK" add "no reviewer" --assignee bob >/dev/null   # card-2 creator=alice
 bash "$AGK" move 2 review >/dev/null
 assert_eq "$(cat "$AGK_TEST_SENT")" "" "review w/o reviewer -> creator==self -> skipped (no send)"
 
+# --- Task 9: claim + 競合 ---
+bash "$AGK" add "claimable" >/dev/null    # card-3, assignee=NULL
+: > "$AGK_TEST_SENT"
+out="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" claim 3)"
+assert_contains "$out" "card-3" "claim by bob succeeds"
+row="$(sqlite3 "$TMP/board.db" "SELECT col,assignee FROM cards WHERE id=3;")"
+assert_eq "$row" "doing|bob" "claim sets doing + assignee=bob"
+assert_eq "$(cat "$AGK_TEST_SENT")" "" "claim self-assign -> actor==assignee -> no send"
+
+# 2人目 carol の claim は失敗（既に bob 保有）
+set +e
+out2="$(AGK_AGENT=carol AGK_TEAM=dev bash "$AGK" claim 3 2>&1)"
+rc=$?
+set -e
+assert_eq "$rc" "1" "second claim by carol exits 1"
+assert_contains "$out2" "already claimed" "second claim reports conflict"
+
 finish
