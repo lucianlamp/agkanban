@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sqlite3
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+
+      - name: Syntax check (bash -n)
+        run: |
+          set -e
+          for f in skills/agkanban/scripts/*.sh \
+                   skills/agkanban/scripts/lib/*.sh \
+                   skills/agkanban/hooks/*.sh; do
+            echo "checking $f"
+            bash -n "$f"
+          done
+
+      - name: Run test suite
+        run: bash skills/agkanban/tests/test_transitions.sh
