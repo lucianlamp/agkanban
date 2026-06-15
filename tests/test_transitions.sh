@@ -97,4 +97,10 @@ assert_not_contains "$mine_bob" "card-1" "mine excludes done card"
 noarg_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
 assert_eq "$noarg_bob" "$mine_bob" "no-arg behaves like mine"
 
+# --- Task 11: show ---
+out="$(bash "$AGK" show 1)"
+assert_contains "$out" "card-1" "show prints card id"
+assert_contains "$out" "first task" "show prints title"
+assert_contains "$out" "todo->doing" "show prints event history"
+
 finish
