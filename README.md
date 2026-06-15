@@ -41,8 +41,15 @@ scripts/agkanban.sh board          # ボード全体
 ## Test
 
 ```bash
-bash tests/test_transitions.sh
+bash skills/agkanban/tests/test_transitions.sh
 ```
+
+## Repo layout
+
+The installable skill lives under `skills/agkanban/` (matches `skills/*/SKILL.md`,
+which both `skills.sh` and `gh skill install` discover). Once installed it lands at
+`~/.agents/skills/agkanban/`, where the Quick start commands above are run as
+`scripts/agkanban.sh …` from within the skill directory.
 
 ## License
 
