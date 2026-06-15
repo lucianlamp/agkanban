@@ -103,4 +103,28 @@ assert_contains "$out" "card-1" "show prints card id"
 assert_contains "$out" "first task" "show prints title"
 assert_contains "$out" "todo->doing" "show prints event history"
 
+# --- Task 12: block + unblock ---
+bash "$AGK" add "blocker" --assignee bob >/dev/null     # card-4
+bash "$AGK" add "waiter"  --assignee carol >/dev/null    # card-5
+bash "$AGK" block 5 --by 4 >/dev/null
+bb="$(sqlite3 "$TMP/board.db" "SELECT blocked_by FROM cards WHERE id=5;")"
+assert_eq "$bb" "4" "block sets blocked_by"
+
+: > "$AGK_TEST_SENT"
+bash "$AGK" move 4 done >/dev/null                       # card-4 done -> unblock card-5
+sent="$(cat "$AGK_TEST_SENT")"
+assert_contains "$sent" "dev|alice|carol|" "unblock notifies waiter's assignee"
+assert_contains "$sent" "card-5 のブロック解除" "unblock message references both cards"
+
+# --- フォールバック: 通知コマンドが失敗しても状態遷移は成功 ---
+cat > "$TMP/fail.sh" <<'F'
+#!/usr/bin/env bash
+exit 1
+F
+chmod +x "$TMP/fail.sh"
+out="$(AGMSG_SEND_CMD="$TMP/fail.sh" bash "$AGK" move 5 doing 2>/dev/null)"
+assert_contains "$out" "card-5: " "move succeeds even when notify fails"
+col5="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=5;")"
+assert_eq "$col5" "doing" "state transition persists despite notify failure"
+
 finish
