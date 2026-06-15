@@ -43,4 +43,32 @@ assert_contains "$out" "todo" "board shows todo column"
 assert_contains "$out" "card-1" "board lists card-1"
 assert_contains "$out" "first task" "board shows title"
 
+# --- Task 8: move + 通知 ---
+: > "$AGK_TEST_SENT"
+bash "$AGK" move 1 doing >/dev/null      # card-1 assignee=bob
+sent="$(cat "$AGK_TEST_SENT")"
+assert_contains "$sent" "dev|alice|bob|" "move->doing notifies assignee"
+assert_contains "$sent" "card-1 着手依頼" "doing message has card ref + label"
+col="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=1;")"
+assert_eq "$col" "doing" "move updates column to doing"
+ev="$(sqlite3 "$TMP/board.db" "SELECT from_col||'->'||to_col FROM card_events WHERE card_id=1 ORDER BY id DESC LIMIT 1;")"
+assert_eq "$ev" "todo->doing" "move logs card_event"
+
+: > "$AGK_TEST_SENT"
+bash "$AGK" move 1 review >/dev/null     # reviewer=carol
+assert_contains "$(cat "$AGK_TEST_SENT")" "dev|alice|carol|" "move->review notifies reviewer"
+
+: > "$AGK_TEST_SENT"
+bash "$AGK" move 1 done >/dev/null        # creator=alice(=actor,skip), assignee=bob
+sent="$(cat "$AGK_TEST_SENT")"
+assert_contains "$sent" "dev|alice|bob|" "move->done notifies assignee (creator=self skipped)"
+assert_contains "$sent" "card-1 完了" "done message has card ref + label"
+
+# reviewer 未設定なら creator に通知
+bash "$AGK" add "no reviewer" --assignee bob >/dev/null   # card-2 creator=alice
+# 上記ブロックの最後2行を以下に置き換える:
+: > "$AGK_TEST_SENT"
+bash "$AGK" move 2 review >/dev/null
+assert_eq "$(cat "$AGK_TEST_SENT")" "" "review w/o reviewer -> creator==self -> skipped (no send)"
+
 finish
