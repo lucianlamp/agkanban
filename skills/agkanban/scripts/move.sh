@@ -16,7 +16,7 @@ num="$(card_num "$ID_ARG")" || exit 2
 case "$TO_COL" in todo|doing|review|done) ;; *) echo "agkanban move: column must be todo|doing|review|done" >&2; exit 2 ;; esac
 
 ensure_db
-agmsg_identity "${AGK_TYPE:-claude-code}" || true
+agmsg_identity || true
 actor="${AGK_AGENT:-}"
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban move: team unresolved (join agmsg or pass --team)" >&2; exit 1; }

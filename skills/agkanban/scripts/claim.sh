@@ -15,7 +15,7 @@ done
 num="$(card_num "$ID_ARG")" || exit 2
 
 ensure_db
-agmsg_identity "${AGK_TYPE:-claude-code}" || true
+agmsg_identity || true
 me="${AGK_AGENT:-}"
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$me" ] && { echo "agkanban claim: agent unresolved (join agmsg)" >&2; exit 1; }

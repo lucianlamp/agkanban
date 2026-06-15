@@ -14,7 +14,7 @@ done
 num="$(card_num "$ID_ARG")" || exit 2
 
 ensure_db
-agmsg_identity "${AGK_TYPE:-claude-code}" || true
+agmsg_identity || true
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban show: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 

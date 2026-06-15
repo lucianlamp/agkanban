@@ -13,7 +13,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 ensure_db
-agmsg_identity "${AGK_TYPE:-claude-code}" || true
+agmsg_identity || true
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban board: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 

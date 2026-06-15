@@ -17,12 +17,15 @@ agmsg_home() {
 }
 
 # 識別解決。成功で AGK_AGENT / AGK_TEAM を設定し return 0。
-# 既に両方が env で設定済みなら whoami を呼ばない（テスト/override seam）。
+# - 既に AGK_AGENT/AGK_TEAM が env で設定済みなら whoami を呼ばない（テスト/override seam）。
+# - agent type は AGK_TYPE が設定されていればそれを使い、未設定なら whoami に渡さず
+#   環境から自動判定させる（Codex なら codex、Claude Code なら claude-code）。
+#   これにより同一スクリプト/hook が両エージェントで正しく動く。
 agmsg_identity() {
   if [ -n "${AGK_AGENT:-}" ] && [ -n "${AGK_TEAM:-}" ]; then return 0; fi
-  local type="${1:-claude-code}" home out
+  local home out
   home="$(agmsg_home)" || return 1
-  out="$(bash "$home/scripts/whoami.sh" "$(pwd)" "$type" 2>/dev/null)" || return 1
+  out="$(bash "$home/scripts/whoami.sh" "$(pwd)" ${AGK_TYPE:+"$AGK_TYPE"} 2>/dev/null)" || return 1
   AGK_AGENT="$(printf '%s\n' "$out" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')"
   AGK_TEAM="$(printf '%s\n' "$out" | sed -n 's/.*teams=\([^, ]*\).*/\1/p')"
   [ -n "$AGK_AGENT" ] && [ -n "$AGK_TEAM" ]
