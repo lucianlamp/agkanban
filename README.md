@@ -15,7 +15,7 @@ npx --yes skills add lucianlamp/agkanban -g -y
 **gh CLI（代替, preview）**:
 
 ```bash
-gh skill install lucianlamp/agkanban --agent claude-code --scope user
+gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
 ```
 
 > agkanban は agmsg と併用して真価を発揮します。先に agmsg を install し、team に join してください。
