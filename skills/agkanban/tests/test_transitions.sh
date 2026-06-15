@@ -4,14 +4,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 source "$HERE/lib_assert.sh"
 
-# --- 隔離環境 ---
+# --- Isolated environment ---
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export AGKANBAN_STORAGE_PATH="$TMP"
 export AGK_TEST_SENT="$TMP/sent.log"
 : > "$AGK_TEST_SENT"
 
-# 通知記録用 recorder（team|from|to|body を 1 行で追記）
+# Notification recorder (appends team|from|to|body per line)
 cat > "$TMP/recorder.sh" <<'REC'
 #!/usr/bin/env bash
 printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" >> "$AGK_TEST_SENT"
@@ -19,13 +19,13 @@ REC
 chmod +x "$TMP/recorder.sh"
 export AGMSG_SEND_CMD="$TMP/recorder.sh"
 
-# 識別スタブ（whoami を呼ばせない）
+# Identity stub (skip whoami)
 export AGK_AGENT="alice"
 export AGK_TEAM="dev"
 
 AGK="$ROOT/scripts/agkanban.sh"
 
-# --- Task 3: DB 初期化 ---
+# --- Task 3: DB init ---
 bash "$ROOT/scripts/init-db.sh"
 tables="$(sqlite3 "$TMP/board.db" ".tables")"
 assert_contains "$tables" "cards" "init-db creates cards table"
@@ -43,12 +43,12 @@ assert_contains "$out" "todo" "board shows todo column"
 assert_contains "$out" "card-1" "board lists card-1"
 assert_contains "$out" "first task" "board shows title"
 
-# --- Task 8: move + 通知 ---
+# --- Task 8: move + notifications ---
 : > "$AGK_TEST_SENT"
 bash "$AGK" move 1 doing >/dev/null      # card-1 assignee=bob
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|bob|" "move->doing notifies assignee"
-assert_contains "$sent" "card-1 着手依頼" "doing message has card ref + label"
+assert_contains "$sent" "card-1 start requested" "doing message has card ref + label"
 col="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=1;")"
 assert_eq "$col" "doing" "move updates column to doing"
 ev="$(sqlite3 "$TMP/board.db" "SELECT from_col||'->'||to_col FROM card_events WHERE card_id=1 ORDER BY id DESC LIMIT 1;")"
@@ -62,16 +62,16 @@ assert_contains "$(cat "$AGK_TEST_SENT")" "dev|alice|carol|" "move->review notif
 bash "$AGK" move 1 done >/dev/null        # creator=alice(=actor,skip), assignee=bob
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|bob|" "move->done notifies assignee (creator=self skipped)"
-assert_contains "$sent" "card-1 完了" "done message has card ref + label"
+assert_contains "$sent" "card-1 done" "done message has card ref + label"
 
-# reviewer 未設定なら creator に通知
+# no reviewer set: notify creator; creator==self → skipped
 bash "$AGK" add "no reviewer" --assignee bob >/dev/null   # card-2 creator=alice
-# 上記ブロックの最後2行を以下に置き換える:
+# Replace the last 2 lines above with:
 : > "$AGK_TEST_SENT"
 bash "$AGK" move 2 review >/dev/null
 assert_eq "$(cat "$AGK_TEST_SENT")" "" "review w/o reviewer -> creator==self -> skipped (no send)"
 
-# --- Task 9: claim + 競合 ---
+# --- Task 9: claim + conflict ---
 bash "$AGK" add "claimable" >/dev/null    # card-3, assignee=NULL
 : > "$AGK_TEST_SENT"
 out="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" claim 3)"
@@ -80,7 +80,7 @@ row="$(sqlite3 "$TMP/board.db" "SELECT col,assignee FROM cards WHERE id=3;")"
 assert_eq "$row" "doing|bob" "claim sets doing + assignee=bob"
 assert_eq "$(cat "$AGK_TEST_SENT")" "" "claim self-assign -> actor==assignee -> no send"
 
-# 2人目 carol の claim は失敗（既に bob 保有）
+# Second claim by carol fails (bob already holds it)
 set +e
 out2="$(AGK_AGENT=carol AGK_TEAM=dev bash "$AGK" claim 3 2>&1)"
 rc=$?
@@ -88,17 +88,17 @@ set -e
 assert_eq "$rc" "1" "second claim by carol exits 1"
 assert_contains "$out2" "already claimed" "second claim reports conflict"
 
-# --- Task 10: 自分の担当カード（引数なし = mine 相当）---
-# bob は card-1(done)・card-3(doing) を持つ。doing/review のみ列挙 → card-3 のみ。
+# --- Task 10: assigned cards (no-arg = mine equivalent) ---
+# bob has card-1(done) and card-3(doing). Only doing/review are listed → card-3 only.
 noarg_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
 assert_contains "$noarg_bob" "card-3" "no-arg lists bob's doing card"
 assert_not_contains "$noarg_bob" "card-1" "no-arg excludes done card"
-# 'mine' サブコマンドは削除済み: 既定動作へ案内して exit 2
+# 'mine' subcommand removed: redirects to default and exits 2
 set +e
 mine_out="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" mine 2>&1)"; mrc=$?
 set -e
 assert_eq "$mrc" "2" "'mine' subcommand removed (exits 2)"
-assert_contains "$mine_out" "既定動作" "'mine' points users to the no-arg default"
+assert_contains "$mine_out" "is the default" "'mine' points users to the no-arg default"
 
 # --- Task 11: show ---
 out="$(bash "$AGK" show 1)"
@@ -117,9 +117,9 @@ assert_eq "$bb" "4" "block sets blocked_by"
 bash "$AGK" move 4 done >/dev/null                       # card-4 done -> unblock card-5
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|carol|" "unblock notifies waiter's assignee"
-assert_contains "$sent" "card-5 のブロック解除" "unblock message references both cards"
+assert_contains "$sent" "card-5 unblocked" "unblock message references both cards"
 
-# --- フォールバック: 通知コマンドが失敗しても状態遷移は成功 ---
+# --- Fallback: state transition succeeds even when notify command fails ---
 cat > "$TMP/fail.sh" <<'F'
 #!/usr/bin/env bash
 exit 1
@@ -130,7 +130,7 @@ assert_contains "$out" "card-5: " "move succeeds even when notify fails"
 col5="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=5;")"
 assert_eq "$col5" "doing" "state transition persists despite notify failure"
 
-# --- 意味的な遷移動詞: review / done / reopen（move の薄いラッパ）---
+# --- Semantic transition verbs: review / done / reopen (thin wrappers over move) ---
 bash "$AGK" add "verb card" --assignee bob --reviewer carol >/dev/null
 vid="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
 : > "$AGK_TEST_SENT"

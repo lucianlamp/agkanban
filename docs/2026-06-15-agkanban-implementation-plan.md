@@ -2,60 +2,60 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** agmsg と組み合わせて真価を発揮する、bash + sqlite3 製の kanban 型タスク状態管理スキル `agkanban` を作り、GitHub で配布可能にする。
+**Goal:** Build `agkanban`, a kanban-style task state management skill in bash + sqlite3 that pairs with agmsg for full value, distributable via GitHub.
 
-**Architecture:** 状態は独立 DB `board.db`（team 単位）に永続化。カードの列遷移時に agmsg の `send.sh` を呼んで関係者へ自動通知（イベント駆動結合）。識別（team/agent）は agmsg から借用。push 通知は agmsg の delivery に相乗りし、agkanban は pull コマンド（引数なし = `mine`）のみ提供。
+**Architecture:** State persisted in independent DB `board.db` (per team). Card column transitions call agmsg's `send.sh` to auto-notify stakeholders (event-driven coupling). Identity (team/agent) borrowed from agmsg. Push notifications piggyback on agmsg's delivery; agkanban provides only a pull command (no args = `mine`).
 
-**Tech Stack:** bash, sqlite3（WAL）, git, gh（配布）。テストは依存無しの bash アサーションハーネス。
+**Tech Stack:** bash, sqlite3 (WAL), git, gh (distribution). Tests use a dependency-free bash assertion harness.
 
-**設計参照:** `docs/2026-06-15-agkanban-design.md`
+**Design reference:** `docs/2026-06-15-agkanban-design.md`
 
 ---
 
 ## File Structure
 
-開発リポジトリ `~/dev/agkanban`（root がそのままスキル本体）。
+Development repo `~/dev/agkanban` (root is the skill itself).
 
-| ファイル | 責務 |
+| File | Responsibility |
 |---|---|
-| `SKILL.md` | スキル本体。識別解決の案内 + サブコマンド分岐の指示 |
-| `README.md` | ワンライナー install（skills.sh 主 + gh 代替）+ 使い方 |
+| `SKILL.md` | Skill entry point. Identity resolution guidance + subcommand dispatch instructions. |
+| `README.md` | One-liner install (skills.sh primary + gh alternative) + usage. |
 | `LICENSE` | MIT |
-| `.gitignore` | `db/`（実行時生成物）を無視 |
-| `scripts/agkanban.sh` | ディスパッチャ（no-arg = mine）。各サブコマンドへ exec |
-| `scripts/lib/storage.sh` | board.db パス解決・DB 実行ヘルパ・SQL エスケープ・timestamp・card id parse |
-| `scripts/lib/agmsg.sh` | agmsg 探索・識別解決（whoami）・send ラッパ（`AGMSG_SEND_CMD` seam） |
-| `scripts/lib/events.sh` | 遷移→通知マッピングと発火 |
-| `scripts/init-db.sh` | スキーマ作成 |
-| `scripts/add.sh` | カード追加（todo） |
-| `scripts/move.sh` | 列遷移 + イベント発火 |
-| `scripts/claim.sh` | 原子的 claim（assignee=自分, doing へ） |
-| `scripts/mine.sh` | 自分の doing/review カード（no-arg の既定） |
-| `scripts/show.sh` | カード詳細 + イベント履歴 |
-| `scripts/board.sh` | team のボード全体 |
-| `scripts/block.sh` | 依存設定 |
-| `tests/lib_assert.sh` | テスト用アサーションハーネス |
-| `tests/test_transitions.sh` | 遷移・claim・通知・フォールバックのテスト |
+| `.gitignore` | Excludes `db/` (runtime-generated). |
+| `scripts/agkanban.sh` | Dispatcher (no-arg = mine). Execs into each subcommand. |
+| `scripts/lib/storage.sh` | board.db path resolution, DB exec helper, SQL escape, timestamp, card id parse. |
+| `scripts/lib/agmsg.sh` | agmsg discovery, identity resolution (whoami), send wrapper (`AGMSG_SEND_CMD` seam). |
+| `scripts/lib/events.sh` | Transition → notification mapping and fire. |
+| `scripts/init-db.sh` | Schema creation. |
+| `scripts/add.sh` | Add card (todo). |
+| `scripts/move.sh` | Column transition + event fire. |
+| `scripts/claim.sh` | Atomic claim (assignee=self, move to doing). |
+| `scripts/mine.sh` | Your doing/review cards (the no-arg default). |
+| `scripts/show.sh` | Card detail + event history. |
+| `scripts/board.sh` | Full team board. |
+| `scripts/block.sh` | Set dependency. |
+| `tests/lib_assert.sh` | Test assertion harness. |
+| `tests/test_transitions.sh` | Tests for transitions, claim, notifications, and fallback. |
 
-**重要な設計シーム（テスト容易性）:**
-- `AGKANBAN_STORAGE_PATH` — board.db の置き場を差し替え（テストは一時ディレクトリ）
-- `AGMSG_SEND_CMD` — 通知送信コマンドを差し替え（テストは記録用スクリプト）
-- `AGK_AGENT` / `AGK_TEAM` — 事前設定されていれば whoami を呼ばず識別とみなす（テストでスタブ）
+**Key design seams (testability):**
+- `AGKANBAN_STORAGE_PATH` — swap board.db location (tests use a temp dir)
+- `AGMSG_SEND_CMD` — swap the notification send command (tests use a recording script)
+- `AGK_AGENT` / `AGK_TEAM` — if pre-set, skip whoami call (test stub)
 
 ---
 
-## Task 1: テストハーネス
+## Task 1: Test harness
 
 **Files:**
 - Create: `tests/lib_assert.sh`
 
-- [ ] **Step 1: アサーションハーネスを書く**
+- [ ] **Step 1: Write the assertion harness**
 
 `tests/lib_assert.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# 依存無しの最小アサーションハーネス。各 assert が ASSERT_FAILS を加算する。
+# Minimal dependency-free assertion harness. Each failed assert increments ASSERT_FAILS.
 ASSERT_FAILS=0
 
 assert_eq() { # actual expected label
@@ -90,10 +90,10 @@ finish() {
 }
 ```
 
-- [ ] **Step 2: 構文チェック**
+- [ ] **Step 2: Syntax check**
 
 Run: `bash -n tests/lib_assert.sh`
-Expected: 出力なし・exit 0
+Expected: no output, exit 0
 
 - [ ] **Step 3: Commit**
 
@@ -104,19 +104,19 @@ git commit -m "test: add minimal bash assertion harness"
 
 ---
 
-## Task 2: storage ライブラリ
+## Task 2: storage library
 
 **Files:**
 - Create: `scripts/lib/storage.sh`
 
-- [ ] **Step 1: storage.sh を書く**
+- [ ] **Step 1: Write storage.sh**
 
 `scripts/lib/storage.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# storage.sh — board.db のパス解決と DB 実行ヘルパ。
-# 解決順: AGKANBAN_STORAGE_PATH(env) > 既定 <skill>/db
+# storage.sh — board.db path resolution and DB exec helpers.
+# Resolution order: AGKANBAN_STORAGE_PATH(env) > default <skill>/db
 
 agkanban_storage_dir() {
   if [ -n "${AGKANBAN_STORAGE_PATH:-}" ]; then
@@ -135,15 +135,15 @@ db_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
 
-# 空なら NULL、それ以外は 'escaped' を返す（SQL リテラル生成用）
+# Returns NULL for empty, or 'escaped' for non-empty (SQL literal generation)
 sql_val() {
   if [ -z "${1:-}" ]; then printf 'NULL'; else printf "'%s'" "$(sql_escape "$1")"; fi
 }
 
-# 1 回の sqlite3 プロセスで SQL を実行（複数文は同一接続 → changes() が有効）
+# Run SQL in a single sqlite3 process (multiple statements share one connection → changes() works)
 db_exec() { sqlite3 -batch "$(agkanban_db)" "$1"; }
 
-# DB が無ければ init-db.sh で作る
+# Create DB via init-db.sh if it does not exist
 ensure_db() {
   local db; db="$(agkanban_db)"
   if [ ! -f "$db" ]; then
@@ -152,7 +152,7 @@ ensure_db() {
   fi
 }
 
-# "card-12" / "12" を 12 に正規化。非数値は stderr + return 1
+# Normalize "card-12" / "12" to 12. Non-numeric input prints to stderr and returns 1.
 card_num() {
   local raw="${1#card-}"
   case "$raw" in
@@ -162,7 +162,7 @@ card_num() {
 }
 ```
 
-- [ ] **Step 2: 構文チェックとヘルパ単体確認**
+- [ ] **Step 2: Syntax check and helper smoke test**
 
 Run:
 ```bash
@@ -180,13 +180,13 @@ git commit -m "feat: add storage lib (db path, sql helpers, card id parse)"
 
 ---
 
-## Task 3: スキーマ初期化
+## Task 3: Schema initialization
 
 **Files:**
 - Create: `scripts/init-db.sh`
-- Test: `tests/test_transitions.sh`（このタスクで雛形を作り、以降のタスクで追記）
+- Test: `tests/test_transitions.sh` (scaffold in this task; extended in subsequent tasks)
 
-- [ ] **Step 1: 失敗するテスト（DB 初期化）を書く**
+- [ ] **Step 1: Write a failing test (DB init)**
 
 `tests/test_transitions.sh`:
 
@@ -197,14 +197,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 source "$HERE/lib_assert.sh"
 
-# --- 隔離環境 ---
+# --- Isolated environment ---
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export AGKANBAN_STORAGE_PATH="$TMP"
 export AGK_TEST_SENT="$TMP/sent.log"
 : > "$AGK_TEST_SENT"
 
-# 通知記録用 recorder（team|from|to|body を 1 行で追記）
+# Notification recorder (appends team|from|to|body per line)
 cat > "$TMP/recorder.sh" <<'REC'
 #!/usr/bin/env bash
 printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" >> "$AGK_TEST_SENT"
@@ -212,13 +212,13 @@ REC
 chmod +x "$TMP/recorder.sh"
 export AGMSG_SEND_CMD="$TMP/recorder.sh"
 
-# 識別スタブ（whoami を呼ばせない）
+# Identity stub (skip whoami)
 export AGK_AGENT="alice"
 export AGK_TEAM="dev"
 
 AGK="$ROOT/scripts/agkanban.sh"
 
-# --- Task 3: DB 初期化 ---
+# --- Task 3: DB init ---
 bash "$ROOT/scripts/init-db.sh"
 tables="$(sqlite3 "$TMP/board.db" ".tables")"
 assert_contains "$tables" "cards" "init-db creates cards table"
@@ -227,12 +227,12 @@ assert_contains "$tables" "card_events" "init-db creates card_events table"
 finish
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`init-db.sh` が存在しないため `cards`/`card_events` が無い）
+Expected: FAIL (`init-db.sh` does not exist yet, so `cards`/`card_events` are absent)
 
-- [ ] **Step 3: init-db.sh を書く**
+- [ ] **Step 3: Write init-db.sh**
 
 `scripts/init-db.sh`:
 
@@ -278,7 +278,7 @@ SQL
 fi
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
 Expected: `ok: init-db creates cards table` / `ok: init-db creates card_events table` / `ALL PASS`
@@ -292,21 +292,21 @@ git commit -m "feat: add board.db schema (init-db) with passing test"
 
 ---
 
-## Task 4: agmsg ライブラリ（探索・識別・送信）
+## Task 4: agmsg library (discovery, identity, send)
 
 **Files:**
 - Create: `scripts/lib/agmsg.sh`
 
-- [ ] **Step 1: agmsg.sh を書く**
+- [ ] **Step 1: Write agmsg.sh**
 
 `scripts/lib/agmsg.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# agmsg.sh — agmsg の探索・識別解決・送信ラッパ。
-# storage.sh が先に source されている前提（db_exec 等は使わない）。
+# agmsg.sh — agmsg discovery, identity resolution, send wrapper.
+# Assumes storage.sh is sourced first (db_exec etc. are not used here).
 
-# agmsg のインストール先を探索（見つからなければ return 1）
+# Locate the agmsg installation (returns 1 if not found)
 agmsg_home() {
   if [ -n "${AGMSG_HOME:-}" ] && [ -f "$AGMSG_HOME/scripts/whoami.sh" ]; then
     printf '%s' "$AGMSG_HOME"; return 0
@@ -320,8 +320,8 @@ agmsg_home() {
   return 1
 }
 
-# 識別解決。成功で AGK_AGENT / AGK_TEAM を設定し return 0。
-# 既に両方が env で設定済みなら whoami を呼ばない（テスト/override seam）。
+# Identity resolution. On success, sets AGK_AGENT / AGK_TEAM and returns 0.
+# If both are already set in env, skips whoami (test/override seam).
 agmsg_identity() {
   if [ -n "${AGK_AGENT:-}" ] && [ -n "${AGK_TEAM:-}" ]; then return 0; fi
   local type="${1:-claude-code}" home out
@@ -332,9 +332,9 @@ agmsg_identity() {
   [ -n "$AGK_AGENT" ] && [ -n "$AGK_TEAM" ]
 }
 
-# 通知送信。宛先が空 or 送信者自身ならスキップ。
-# AGMSG_SEND_CMD があればそれを使い、無ければ agmsg の send.sh。
-# agmsg 不在/失敗時は警告を出して握りつぶす（状態遷移は止めない）。
+# Send notification. Skip if recipient is empty or equals sender.
+# Uses AGMSG_SEND_CMD if set, otherwise agmsg's send.sh.
+# On agmsg absence or failure, warns and swallows the error (does not abort state transition).
 agmsg_send() { # team from to body
   local team="$1" from="$2" to="$3" body="$4"
   [ -z "$to" ] && return 0
@@ -355,20 +355,20 @@ agmsg_send() { # team from to body
 }
 ```
 
-- [ ] **Step 2: 構文チェックと send seam の確認**
+- [ ] **Step 2: Syntax check and send seam smoke test**
 
 Run:
 ```bash
 bash -n scripts/lib/agmsg.sh && \
 TMPL="$(mktemp)" && \
 bash -c 'source scripts/lib/agmsg.sh
-  export AGMSG_SEND_CMD="/bin/sh -c"  # ダミー（呼ばれないことの確認）
+  export AGMSG_SEND_CMD="/bin/sh -c"  # dummy (confirm it is not called)
   unset AGMSG_SEND_CMD
-  # 宛先が送信者自身 → スキップ（出力なし）
+  # recipient == sender → skip (no output)
   REC="'"$TMPL"'"; export AGMSG_SEND_CMD="$(command -v printf)"
   agmsg_send dev alice alice "self" ; echo "self-skip-ok"'
 ```
-Expected: 末尾に `self-skip-ok`（自分宛はスキップされ printf は呼ばれない）
+Expected: ends with `self-skip-ok` (self-send skipped, printf not called)
 
 - [ ] **Step 3: Commit**
 
@@ -379,40 +379,40 @@ git commit -m "feat: add agmsg lib (discovery, identity, send wrapper)"
 
 ---
 
-## Task 5: events ライブラリ（遷移→通知）
+## Task 5: events library (transition → notification)
 
 **Files:**
 - Create: `scripts/lib/events.sh`
 
-- [ ] **Step 1: events.sh を書く**
+- [ ] **Step 1: Write events.sh**
 
 `scripts/lib/events.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# events.sh — 列遷移に対応する通知の発火。
-# storage.sh と agmsg.sh が先に source されている前提。
+# events.sh — fire notifications for column transitions.
+# Assumes storage.sh and agmsg.sh are sourced first.
 
-# 直接遷移の通知。
+# Direct transition notification.
 fire_transition() { # team actor card_id title to_col assignee reviewer creator
   local team="$1" actor="$2" card_id="$3" title="$4" to_col="$5" \
         assignee="$6" reviewer="$7" creator="$8"
   local ref="card-$card_id" rcpt
   case "$to_col" in
     doing)
-      agmsg_send "$team" "$actor" "$assignee" "[agkanban] $ref 着手依頼: $title" ;;
+      agmsg_send "$team" "$actor" "$assignee" "[agkanban] $ref start requested: $title" ;;
     review)
       rcpt="$reviewer"; [ -z "$rcpt" ] && rcpt="$creator"
-      agmsg_send "$team" "$actor" "$rcpt" "[agkanban] $ref review待ち: $title" ;;
+      agmsg_send "$team" "$actor" "$rcpt" "[agkanban] $ref review requested: $title" ;;
     done)
-      agmsg_send "$team" "$actor" "$creator" "[agkanban] $ref 完了: $title"
+      agmsg_send "$team" "$actor" "$creator" "[agkanban] $ref done: $title"
       if [ -n "$assignee" ] && [ "$assignee" != "$creator" ]; then
-        agmsg_send "$team" "$actor" "$assignee" "[agkanban] $ref 完了: $title"
+        agmsg_send "$team" "$actor" "$assignee" "[agkanban] $ref done: $title"
       fi ;;
   esac
 }
 
-# 依存解消通知: done になった card に blocked_by で紐づく待ちカードの assignee へ。
+# Unblock notification: sent to the assignee of cards waiting on the card that just finished.
 fire_unblock() { # team actor done_id
   local team="$1" actor="$2" done_id="$3" rows dep_id dep_assignee
   rows="$(db_exec "SELECT id, COALESCE(assignee,'') FROM cards WHERE team='$(sql_escape "$team")' AND blocked_by=$done_id;")"
@@ -420,17 +420,17 @@ fire_unblock() { # team actor done_id
   while IFS='|' read -r dep_id dep_assignee; do
     [ -z "$dep_id" ] && continue
     agmsg_send "$team" "$actor" "$dep_assignee" \
-      "[agkanban] card-$dep_id のブロック解除（card-$done_id 完了）"
+      "[agkanban] card-$dep_id unblocked (card-$done_id done)"
   done <<EOF
 $rows
 EOF
 }
 ```
 
-- [ ] **Step 2: 構文チェック**
+- [ ] **Step 2: Syntax check**
 
 Run: `bash -n scripts/lib/events.sh`
-Expected: 出力なし・exit 0
+Expected: no output, exit 0
 
 - [ ] **Step 3: Commit**
 
@@ -441,15 +441,15 @@ git commit -m "feat: add events lib (transition + unblock notifications)"
 
 ---
 
-## Task 6: ディスパッチャ + add
+## Task 6: Dispatcher + add
 
 **Files:**
 - Create: `scripts/agkanban.sh`, `scripts/add.sh`
-- Modify: `tests/test_transitions.sh`（add のテストを追記）
+- Modify: `tests/test_transitions.sh` (append add tests)
 
-- [ ] **Step 1: 失敗するテスト（add）を追記**
+- [ ] **Step 1: Append a failing test (add)**
 
-`tests/test_transitions.sh` の `finish` の直前に挿入:
+Insert before `finish` in `tests/test_transitions.sh`:
 
 ```bash
 # --- Task 6: add ---
@@ -459,12 +459,12 @@ row="$(sqlite3 "$TMP/board.db" "SELECT team,col,assignee,reviewer,creator,title 
 assert_eq "$row" "dev|todo|bob|carol|alice|first task" "add inserts row (todo, creator=alice)"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`agkanban.sh` / `add.sh` が無い）
+Expected: FAIL (`agkanban.sh` / `add.sh` do not exist yet)
 
-- [ ] **Step 3: ディスパッチャを書く**
+- [ ] **Step 3: Write the dispatcher**
 
 `scripts/agkanban.sh`:
 
@@ -472,7 +472,7 @@ Expected: FAIL（`agkanban.sh` / `add.sh` が無い）
 #!/usr/bin/env bash
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-sub="${1:-mine}"        # 引数なし = mine
+sub="${1:-mine}"        # no args = mine
 [ "$#" -gt 0 ] && shift
 
 case "$sub" in
@@ -485,10 +485,10 @@ case "$sub" in
   block)  exec bash "$DIR/block.sh" "$@" ;;
   -h|--help|help)
     cat <<'USAGE'
-agkanban — agmsg と組み合わせる kanban 型タスク管理
-  agkanban                       自分の担当カード（= mine）
-  agkanban mine                  自分の doing/review カード
-  agkanban board                 team のボード全体
+agkanban — kanban task management paired with agmsg
+  agkanban                       your assigned cards (= mine)
+  agkanban mine                  your doing/review cards
+  agkanban board                 full team board
   agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."] [--team T]
   agkanban move <id> <todo|doing|review|done> [--team T]
   agkanban claim <id> [--team T]
@@ -500,7 +500,7 @@ USAGE
 esac
 ```
 
-- [ ] **Step 4: add.sh を書く**
+- [ ] **Step 4: Write add.sh**
 
 `scripts/add.sh`:
 
@@ -524,7 +524,7 @@ done
 [ -z "$TITLE" ] && { echo "agkanban add: title required" >&2; exit 2; }
 
 ensure_db
-agmsg_identity "${AGK_TYPE:-claude-code}" || true   # 未解決でも creator 空で続行可
+agmsg_identity "${AGK_TYPE:-claude-code}" || true   # if unresolved, creator is left empty and we continue
 creator="${AGK_AGENT:-}"
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban add: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
@@ -538,7 +538,7 @@ id="$(db_exec "SELECT last_insert_rowid();")"
 echo "card-$id added to $team (todo)"
 ```
 
-- [ ] **Step 5: テストを実行して成功を確認**
+- [ ] **Step 5: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
 Expected: `ok: add returns card-1` / `ok: add inserts row (todo, creator=alice)` / `ALL PASS`
@@ -552,15 +552,15 @@ git commit -m "feat: add dispatcher and add subcommand"
 
 ---
 
-## Task 7: board（一覧表示）
+## Task 7: board (listing)
 
 **Files:**
 - Create: `scripts/board.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（board）を追記**
+- [ ] **Step 1: Append a failing test (board)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
 # --- Task 7: board ---
@@ -570,12 +570,12 @@ assert_contains "$out" "card-1" "board lists card-1"
 assert_contains "$out" "first task" "board shows title"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`board.sh` が無い）
+Expected: FAIL (`board.sh` does not exist yet)
 
-- [ ] **Step 3: board.sh を書く**
+- [ ] **Step 3: Write board.sh**
 
 `scripts/board.sh`:
 
@@ -608,7 +608,7 @@ for col in todo doing review done; do
 done
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
 Expected: `ok: board shows todo column` / `ok: board lists card-1` / `ok: board shows title` / `ALL PASS`
@@ -622,23 +622,23 @@ git commit -m "feat: add board subcommand"
 
 ---
 
-## Task 8: move + イベント発火
+## Task 8: move + event fire
 
 **Files:**
 - Create: `scripts/move.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（move と通知）を追記**
+- [ ] **Step 1: Append failing tests (move and notifications)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
-# --- Task 8: move + 通知 ---
+# --- Task 8: move + notifications ---
 : > "$AGK_TEST_SENT"
 bash "$AGK" move 1 doing >/dev/null      # card-1 assignee=bob
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|bob|" "move->doing notifies assignee"
-assert_contains "$sent" "card-1 着手依頼" "doing message has card ref + label"
+assert_contains "$sent" "card-1 start requested" "doing message has card ref + label"
 col="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=1;")"
 assert_eq "$col" "doing" "move updates column to doing"
 ev="$(sqlite3 "$TMP/board.db" "SELECT from_col||'->'||to_col FROM card_events WHERE card_id=1 ORDER BY id DESC LIMIT 1;")"
@@ -652,30 +652,32 @@ assert_contains "$(cat "$AGK_TEST_SENT")" "dev|alice|carol|" "move->review notif
 bash "$AGK" move 1 done >/dev/null        # creator=alice(=actor,skip), assignee=bob
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|bob|" "move->done notifies assignee (creator=self skipped)"
-assert_contains "$sent" "card-1 完了" "done message has card ref + label"
+assert_contains "$sent" "card-1 done" "done message has card ref + label"
 
-# reviewer 未設定なら creator に通知
+# no reviewer set: notify creator
 bash "$AGK" add "no reviewer" --assignee bob >/dev/null   # card-2 creator=alice
 : > "$AGK_TEST_SENT"
 bash "$AGK" move 2 review >/dev/null
 assert_contains "$(cat "$AGK_TEST_SENT")" "dev|alice|alice|" "review w/o reviewer falls back to creator"
 ```
 
-注: 最後のアサーションは creator=alice=actor=alice のため `agmsg_send` の自己宛スキップに引っかかる。**意図的にスキップされる**ので、`sent.log` に `alice|alice` は現れない。テストを実態に合わせて次のように修正する:
+Note: the last assertion is for creator=alice=actor=alice, which hits `agmsg_send`'s
+self-send skip. **It is intentionally skipped**, so `alice|alice` never appears in
+`sent.log`. Update the test to match actual behavior:
 
 ```bash
-# 上記ブロックの最後2行を以下に置き換える:
+# Replace the last 2 lines of the block above with:
 : > "$AGK_TEST_SENT"
 bash "$AGK" move 2 review >/dev/null
 assert_eq "$(cat "$AGK_TEST_SENT")" "" "review w/o reviewer -> creator==self -> skipped (no send)"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`move.sh` が無い）
+Expected: FAIL (`move.sh` does not exist yet)
 
-- [ ] **Step 3: move.sh を書く**
+- [ ] **Step 3: Write move.sh**
 
 `scripts/move.sh`:
 
@@ -720,10 +722,10 @@ fire_transition "$team" "$actor" "$num" "$title" "$TO_COL" "$assignee" "$reviewe
 echo "card-$num: $from_col -> $TO_COL"
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
-Expected: 追加した move 系アサーションがすべて `ok:` / `ALL PASS`
+Expected: all added move assertions show `ok:` / `ALL PASS`
 
 - [ ] **Step 5: Commit**
 
@@ -734,18 +736,18 @@ git commit -m "feat: add move subcommand with event-driven agmsg notifications"
 
 ---
 
-## Task 9: claim（原子的）
+## Task 9: claim (atomic)
 
 **Files:**
 - Create: `scripts/claim.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（claim と競合）を追記**
+- [ ] **Step 1: Append failing tests (claim and conflict)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
-# --- Task 9: claim + 競合 ---
+# --- Task 9: claim + conflict ---
 bash "$AGK" add "claimable" >/dev/null    # card-3, assignee=NULL
 : > "$AGK_TEST_SENT"
 out="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" claim 3)"
@@ -754,7 +756,7 @@ row="$(sqlite3 "$TMP/board.db" "SELECT col,assignee FROM cards WHERE id=3;")"
 assert_eq "$row" "doing|bob" "claim sets doing + assignee=bob"
 assert_contains "$(cat "$AGK_TEST_SENT")" "dev|bob|bob|" "claim self-assign -> self -> skipped"
 
-# 2人目 carol の claim は失敗（既に bob 保有）
+# Second claim by carol fails (bob already holds it)
 set +e
 out2="$(AGK_AGENT=carol AGK_TEAM=dev bash "$AGK" claim 3 2>&1)"
 rc=$?
@@ -763,19 +765,20 @@ assert_eq "$rc" "1" "second claim by carol exits 1"
 assert_contains "$out2" "already claimed" "second claim reports conflict"
 ```
 
-注: `claim self-assign -> self -> skipped` は assignee=bob, actor=bob で自己宛のため送信されない。期待値は空。実態に合わせ次に修正:
+Note: `claim self-assign -> self -> skipped` — assignee=bob, actor=bob, so the send is
+skipped as self-notification. Expected value is empty. Update to match actual behavior:
 
 ```bash
-# 上の claim 通知アサーションを置き換え:
+# Replace the claim notification assertion above with:
 assert_eq "$(cat "$AGK_TEST_SENT")" "" "claim self-assign -> actor==assignee -> no send"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`claim.sh` が無い）
+Expected: FAIL (`claim.sh` does not exist yet)
 
-- [ ] **Step 3: claim.sh を書く**
+- [ ] **Step 3: Write claim.sh**
 
 `scripts/claim.sh`:
 
@@ -803,14 +806,14 @@ team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$me" ] && { echo "agkanban claim: agent unresolved (join agmsg)" >&2; exit 1; }
 [ -z "$team" ] && { echo "agkanban claim: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 
-# 遷移前情報（タイトル・元列）。存在しないなら not found。
+# Pre-transition data (title, current column). If missing: not found.
 row="$(db_exec "SELECT col,title,COALESCE(reviewer,''),COALESCE(creator,'') FROM cards WHERE id=$num AND team='$(sql_escape "$team")';")"
 [ -z "$row" ] && { echo "agkanban claim: card-$num not found in team $team" >&2; exit 1; }
 IFS='|' read -r from_col title reviewer creator <<EOF
 $row
 EOF
 
-# 原子的 claim: 同一接続で UPDATE と changes() を実行。
+# Atomic claim: run UPDATE and changes() in the same connection.
 now="$(db_now)"
 changed="$(db_exec "UPDATE cards SET assignee='$(sql_escape "$me")', col='doing', updated_at='$now'
                     WHERE id=$num AND team='$(sql_escape "$team")' AND (assignee IS NULL OR assignee='$(sql_escape "$me")');
@@ -826,10 +829,10 @@ fire_transition "$team" "$me" "$num" "$title" "doing" "$me" "$reviewer" "$creato
 echo "card-$num claimed by $me (doing)"
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
-Expected: claim 系アサーションすべて `ok:` / `ALL PASS`
+Expected: all claim assertions show `ok:` / `ALL PASS`
 
 - [ ] **Step 5: Commit**
 
@@ -840,33 +843,33 @@ git commit -m "feat: add atomic claim subcommand"
 
 ---
 
-## Task 10: mine（no-arg 既定）
+## Task 10: mine (no-arg default)
 
 **Files:**
 - Create: `scripts/mine.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（mine と no-arg 同一挙動）を追記**
+- [ ] **Step 1: Append failing tests (mine and no-arg identical behavior)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
-# --- Task 10: mine（no-arg = mine）---
-# bob は card-1(done)・card-3(doing) を持つ。doing/review のみ列挙 → card-3 のみ。
+# --- Task 10: mine (no-arg = mine) ---
+# bob has card-1(done) and card-3(doing). Only doing/review are listed → card-3 only.
 mine_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" mine)"
 assert_contains "$mine_bob" "card-3" "mine lists bob's doing card"
 assert_not_contains "$mine_bob" "card-1" "mine excludes done card"
-# no-arg は mine と同一
+# no-arg is identical to mine
 noarg_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
 assert_eq "$noarg_bob" "$mine_bob" "no-arg behaves like mine"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`mine.sh` が無い）
+Expected: FAIL (`mine.sh` does not exist yet)
 
-- [ ] **Step 3: mine.sh を書く**
+- [ ] **Step 3: Write mine.sh**
 
 `scripts/mine.sh`:
 
@@ -900,10 +903,10 @@ db_exec "SELECT 'card-'||id||'  ['||col||']  '||title
          ORDER BY col, id;"
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
-Expected: mine 系アサーションすべて `ok:` / `ALL PASS`
+Expected: all mine assertions show `ok:` / `ALL PASS`
 
 - [ ] **Step 5: Commit**
 
@@ -914,15 +917,15 @@ git commit -m "feat: add mine subcommand (also the no-arg default)"
 
 ---
 
-## Task 11: show（詳細 + 履歴）
+## Task 11: show (detail + history)
 
 **Files:**
 - Create: `scripts/show.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（show）を追記**
+- [ ] **Step 1: Append a failing test (show)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
 # --- Task 11: show ---
@@ -932,12 +935,12 @@ assert_contains "$out" "first task" "show prints title"
 assert_contains "$out" "todo->doing" "show prints event history"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`show.sh` が無い）
+Expected: FAIL (`show.sh` does not exist yet)
 
-- [ ] **Step 3: show.sh を書く**
+- [ ] **Step 3: Write show.sh**
 
 `scripts/show.sh`:
 
@@ -975,10 +978,10 @@ db_exec "SELECT at||'  '||COALESCE(actor,'?')||'  '||from_col||'->'||to_col
          FROM card_events WHERE card_id=$num AND team='$(sql_escape "$team")' ORDER BY id;"
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
-Expected: show 系アサーションすべて `ok:` / `ALL PASS`
+Expected: all show assertions show `ok:` / `ALL PASS`
 
 - [ ] **Step 5: Commit**
 
@@ -989,15 +992,15 @@ git commit -m "feat: add show subcommand (detail + event history)"
 
 ---
 
-## Task 12: block + unblock 通知 + フォールバック
+## Task 12: block + unblock notification + fallback
 
 **Files:**
 - Create: `scripts/block.sh`
 - Modify: `tests/test_transitions.sh`
 
-- [ ] **Step 1: 失敗するテスト（block / unblock / フォールバック）を追記**
+- [ ] **Step 1: Append failing tests (block / unblock / fallback)**
 
-`finish` 直前に挿入:
+Insert before `finish`:
 
 ```bash
 # --- Task 12: block + unblock ---
@@ -1011,9 +1014,9 @@ assert_eq "$bb" "4" "block sets blocked_by"
 bash "$AGK" move 4 done >/dev/null                       # card-4 done -> unblock card-5
 sent="$(cat "$AGK_TEST_SENT")"
 assert_contains "$sent" "dev|alice|carol|" "unblock notifies waiter's assignee"
-assert_contains "$sent" "card-5 のブロック解除" "unblock message references both cards"
+assert_contains "$sent" "card-5 unblocked" "unblock message references both cards"
 
-# --- フォールバック: 通知コマンドが失敗しても状態遷移は成功 ---
+# --- Fallback: state transition succeeds even when the notify command fails ---
 cat > "$TMP/fail.sh" <<'F'
 #!/usr/bin/env bash
 exit 1
@@ -1025,12 +1028,12 @@ col5="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=5;")"
 assert_eq "$col5" "doing" "state transition persists despite notify failure"
 ```
 
-- [ ] **Step 2: テストを実行して失敗を確認**
+- [ ] **Step 2: Run test and confirm failure**
 
 Run: `bash tests/test_transitions.sh`
-Expected: FAIL（`block.sh` が無い）
+Expected: FAIL (`block.sh` does not exist yet)
 
-- [ ] **Step 3: block.sh を書く**
+- [ ] **Step 3: Write block.sh**
 
 `scripts/block.sh`:
 
@@ -1065,10 +1068,10 @@ changed="$(db_exec "UPDATE cards SET blocked_by=$by, updated_at='$now'
 echo "card-$num blocked by card-$by"
 ```
 
-- [ ] **Step 4: テストを実行して成功を確認**
+- [ ] **Step 4: Run test and confirm success**
 
 Run: `bash tests/test_transitions.sh`
-Expected: block / unblock / フォールバック系すべて `ok:` / `ALL PASS`
+Expected: all block / unblock / fallback assertions show `ok:` / `ALL PASS`
 
 - [ ] **Step 5: Commit**
 
@@ -1084,7 +1087,7 @@ git commit -m "feat: add block subcommand + unblock notification on done"
 **Files:**
 - Create: `SKILL.md`, `README.md`, `LICENSE`, `.gitignore`
 
-- [ ] **Step 1: .gitignore を書く**
+- [ ] **Step 1: Write .gitignore**
 
 `.gitignore`:
 
@@ -1095,7 +1098,7 @@ db/
 *.db-wal
 ```
 
-- [ ] **Step 2: SKILL.md を書く**
+- [ ] **Step 2: Write SKILL.md**
 
 `SKILL.md`:
 
@@ -1107,49 +1110,51 @@ description: Use when coordinating multi-agent tasks across Claude Code / Codex 
 
 # agkanban
 
-agmsg と組み合わせて使う kanban 型タスク状態管理。状態は team 単位の `board.db` に永続化し、
-カードの列遷移時に agmsg 経由で関係者へ自動通知する。識別（team/agent）は agmsg から借用する。
+Kanban-style task state management designed to pair with agmsg. State is persisted in a
+per-team `board.db`; card column transitions auto-notify stakeholders via agmsg.
+Identity (team/agent) is borrowed from agmsg.
 
-## 前提
+## Prerequisites
 
-- agmsg が install 済みで、このプロジェクトで team に join していること（`/agmsg` で確認）。
-- 未 join / agmsg 不在でもボード操作は動くが、通知はスキップされる。
+- agmsg installed and the project joined to a team (`/agmsg` to verify).
+- Board operations work without joining / without agmsg, but notifications are skipped.
 
-## 使い方
+## Usage
 
-すべて `scripts/agkanban.sh <subcommand>` を実行する。引数なしは `mine`。
+All commands run as `scripts/agkanban.sh <subcommand>`. No arguments defaults to `mine`.
 
-| コマンド | 動作 |
+| Command | Action |
 |---|---|
-| `scripts/agkanban.sh` | 自分の担当カード（= mine） |
-| `scripts/agkanban.sh mine` | 自分の doing/review カード |
-| `scripts/agkanban.sh board` | team のボード全体 |
-| `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | カード追加（todo） |
-| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | 列遷移（ここで agmsg 自動通知） |
-| `scripts/agkanban.sh claim <id>` | assignee=自分 にして doing へ（原子的） |
-| `scripts/agkanban.sh show <id>` | カード詳細 + イベント履歴 |
-| `scripts/agkanban.sh block <id> --by <id2>` | 依存設定 |
+| `scripts/agkanban.sh` | Your assigned cards (= mine) |
+| `scripts/agkanban.sh mine` | Your doing/review cards |
+| `scripts/agkanban.sh board` | Full team board |
+| `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
+| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | Column transition (triggers agmsg auto-notify) |
+| `scripts/agkanban.sh claim <id>` | Set assignee=self and move to doing (atomic) |
+| `scripts/agkanban.sh show <id>` | Card detail + event history |
+| `scripts/agkanban.sh block <id> --by <id2>` | Set dependency |
 
-複数 team に所属する場合は各コマンドに `--team <name>` を付ける。
+Pass `--team <name>` on each command when you belong to multiple teams.
 
-## delivery（気づき）
+## Delivery (awareness)
 
-agkanban は独自の監視を持たない。遷移で発火した通知は **agmsg の delivery（turn/monitor/hook）** が運ぶ。
-カードは状態が永続するため、必要時に `mine` / `board` で pull すれば取りこぼさない。
+agkanban has no dedicated monitor. Notifications fired on transitions are delivered by
+**agmsg's delivery mechanism (turn/monitor/hook)**. Because state is persistent, running
+`mine` / `board` on demand is sufficient to catch up without missing anything.
 
-## 通知マッピング
+## Notification mapping
 
-| 遷移 | 通知先 |
+| Transition | Recipient |
 |---|---|
 | → doing | assignee |
-| → review | reviewer（無ければ creator） |
-| → done | creator（+ assignee が別なら両方） |
-| 依存先が done | 待ちカードの assignee |
+| → review | reviewer (falls back to creator) |
+| → done | creator (+ assignee if different) |
+| dependency done | assignee of the waiting card |
 
-自分自身宛の通知は送られない。
+Notifications to yourself are suppressed.
 ```
 
-- [ ] **Step 3: README.md を書く**
+- [ ] **Step 3: Write README.md**
 
 `README.md`:
 
@@ -1162,37 +1167,37 @@ Built with bash + sqlite3 — no daemon, no network.
 
 ## Install
 
-**skills.sh（推奨）** — `~/.agents/skills` にグローバル install:
+**skills.sh (recommended)** — installs globally to `~/.agents/skills`:
 
 ```bash
 npx --yes skills add lucianlamp/agkanban -g -y
 ```
 
-**gh CLI（代替, preview）**:
+**gh CLI (alternative, preview)**:
 
 ```bash
 gh skill install lucianlamp/agkanban --agent claude-code --scope user
 ```
 
-> agkanban は agmsg と併用して真価を発揮します。先に agmsg を install し、team に join してください。
-> agmsg 不在でもボード操作は動きますが、通知はスキップされます。
+> agkanban works best paired with agmsg. Install agmsg first and join your team.
+> Board operations work without agmsg, but notifications are skipped.
 
 ## Quick start
 
 ```bash
 scripts/agkanban.sh add "design API" --assignee codex --reviewer claude
-scripts/agkanban.sh claim 1        # assignee=自分, doing へ（原子的）
-scripts/agkanban.sh move 1 review  # reviewer へ自動通知
-scripts/agkanban.sh                # 引数なし = 自分の担当（mine）
-scripts/agkanban.sh board          # ボード全体
+scripts/agkanban.sh claim 1        # claim (assignee=self, move to doing, atomic)
+scripts/agkanban.sh move 1 review  # auto-notifies reviewer
+scripts/agkanban.sh                # no args = your assigned cards (mine)
+scripts/agkanban.sh board          # full board
 ```
 
 ## How it works
 
-- **状態**: `db/board.db`（team 単位）。`AGKANBAN_STORAGE_PATH` で差替可。
-- **識別**: agmsg の `whoami.sh` から team/agent を借用（`AGMSG_HOME` / 兄弟ディレクトリ / `~/.agents/skills/agmsg` を探索）。
-- **通知**: 列遷移時に agmsg の `send.sh` を発火（`AGMSG_SEND_CMD` で差替可・テスト用）。
-- **delivery**: agmsg の turn/monitor/hook に相乗り。agkanban 独自の監視は持たない。
+- **State**: `db/board.db` (per team). Override with `AGKANBAN_STORAGE_PATH`.
+- **Identity**: borrows team/agent from agmsg's `whoami.sh` (searches `AGMSG_HOME`, sibling dir, `~/.agents/skills/agmsg`).
+- **Notifications**: fires agmsg's `send.sh` on column transitions (swappable via `AGMSG_SEND_CMD` for testing).
+- **Delivery**: piggybacks on agmsg's turn/monitor/hook. agkanban has no dedicated monitor.
 
 ## Test
 
@@ -1205,14 +1210,14 @@ bash tests/test_transitions.sh
 MIT
 ````
 
-- [ ] **Step 4: LICENSE を書く**
+- [ ] **Step 4: Write LICENSE**
 
-`LICENSE`（MIT。`<YEAR>` は 2026、`<COPYRIGHT HOLDER>` は ysk411）:
+`LICENSE` (MIT. `<YEAR>` = 2026, `<COPYRIGHT HOLDER>` = lucianlamp):
 
 ```
 MIT License
 
-Copyright (c) 2026 ysk411
+Copyright (c) 2026 lucianlamp
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1233,12 +1238,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-- [ ] **Step 5: 全テスト再実行（リグレッション確認）**
+- [ ] **Step 5: Re-run all tests (regression check)**
 
 Run: `bash tests/test_transitions.sh`
 Expected: `ALL PASS`
 
-- [ ] **Step 6: 実行権限付与 + Commit**
+- [ ] **Step 6: Set executable permissions + Commit**
 
 ```bash
 chmod +x scripts/agkanban.sh scripts/*.sh
@@ -1249,15 +1254,15 @@ git commit -m "docs: add SKILL.md, README, LICENSE, gitignore; mark scripts exec
 
 ---
 
-## Task 14: GitHub 公開準備（private で作成 → push）
+## Task 14: GitHub publish preparation (create private → push)
 
 **Files:**
-- なし（git/gh 操作のみ）
+- None (git/gh operations only)
 
-> ユーザーは「整備したらあとで public にする」と指示。まず private で作成し push する。
-> public 化はユーザー承認のもとで後日（`gh repo edit --visibility public`）。
+> The user specified "make it public later after polishing." Start with private and push.
+> Make public later with user approval (`gh repo edit --visibility public`).
 
-- [ ] **Step 1: ローカルでの最終検証**
+- [ ] **Step 1: Final local verification**
 
 Run:
 ```bash
@@ -1265,9 +1270,9 @@ cd ~/dev/agkanban
 bash tests/test_transitions.sh
 for f in scripts/*.sh scripts/lib/*.sh; do bash -n "$f" || echo "SYNTAX FAIL: $f"; done
 ```
-Expected: `ALL PASS` かつ構文エラーなし
+Expected: `ALL PASS` and no syntax errors
 
-- [ ] **Step 2: リモートが未作成なら private で作成 + push**
+- [ ] **Step 2: Create private remote and push (if not yet created)**
 
 Run:
 ```bash
@@ -1276,52 +1281,53 @@ gh repo view lucianlamp/agkanban >/dev/null 2>&1 \
   || gh repo create lucianlamp/agkanban --private --source=. --remote=origin --description "Multi-agent kanban board that pairs with agmsg"
 git push -u origin "$(git symbolic-ref --short HEAD)"
 ```
-Expected: リポジトリ作成（または既存検出）後、push 成功
+Expected: repo created (or existing detected) then push succeeds
 
-- [ ] **Step 3: install ワンライナーの実地検証（gh 経路）**
+- [ ] **Step 3: Verify install one-liner (gh path)**
 
 Run:
 ```bash
 gh skill install lucianlamp/agkanban --agent claude-code --scope user
 ls -ld ~/.agents/skills/agkanban && head -3 ~/.agents/skills/agkanban/SKILL.md
 ```
-Expected: `~/.agents/skills/agkanban/` に展開され、SKILL.md frontmatter が見える
+Expected: expanded to `~/.agents/skills/agkanban/`; SKILL.md frontmatter visible
 
-- [ ] **Step 4: install 後の本番経路スモークテスト（agmsg 探索）**
+- [ ] **Step 4: Post-install production path smoke test (agmsg discovery)**
 
 Run:
 ```bash
 AGK_AGENT="" AGK_TEAM="" bash ~/.agents/skills/agkanban/scripts/agkanban.sh --help
 ```
-Expected: usage が表示される（agmsg 兄弟探索パスでクラッシュしないこと）
+Expected: usage displayed (no crash on agmsg sibling discovery path)
 
-> 本番での通知連携の最終確認（実 agmsg send）は、agmsg の team に join した状態で
-> `agkanban add` → `agkanban move ... doing` を実行し、相手の inbox に届くことを Claude がローカルで検証する。
+> Final production notification integration test (real agmsg send): join an agmsg team,
+> run `agkanban add` → `agkanban move ... doing`, and verify the message arrives in the
+> recipient's inbox (Claude verifies locally).
 
 ---
 
 ## Self-Review
 
-**1. Spec coverage（spec 各節 → 実装タスク）:**
-- §2.1 イベント駆動結合 → Task 8（move 発火）, Task 5（events）
-- §2.2 team 単位 → 全コマンドが team で絞り込み（Task 6–12）
-- §2.3 独立 board.db → Task 2/3
-- §2.4 識別借用・探索フォールバック → Task 4（agmsg.sh）
-- §2.5 delivery 相乗り + pull / no-arg=mine → Task 10, Task 6（dispatcher no-arg）
-- §3.2 データモデル → Task 3
-- §3.3 通知マッピング表 → Task 5/8
-- §3.5 claim 原子性 → Task 9（同一接続 UPDATE+changes()）
-- §3.5 フォールバック → Task 12（notify 失敗でも遷移成功）
-- §4 コマンド I/F → Task 6–12 + dispatcher
-- §5 ディレクトリ → 全タスク
-- §6 テスト → 各タスクの TDD + Task 1 ハーネス
-- §8 配布 → Task 13（README/SKILL）, Task 14（gh）
-- ギャップ: なし
+**1. Spec coverage (spec sections → implementation tasks):**
+- §2.1 event-driven coupling → Task 8 (move fire), Task 5 (events)
+- §2.2 per-team scope → all commands filter by team (Task 6–12)
+- §2.3 independent board.db → Task 2/3
+- §2.4 identity borrowing + discovery fallback → Task 4 (agmsg.sh)
+- §2.5 piggyback delivery + pull / no-arg=mine → Task 10, Task 6 (dispatcher no-arg)
+- §3.2 data model → Task 3
+- §3.3 notification mapping table → Task 5/8
+- §3.5 claim atomicity → Task 9 (UPDATE+changes() in same connection)
+- §3.5 fallback → Task 12 (transition succeeds despite notify failure)
+- §4 command interface → Task 6–12 + dispatcher
+- §5 directory layout → all tasks
+- §6 testing → per-task TDD + Task 1 harness
+- §8 distribution → Task 13 (README/SKILL), Task 14 (gh)
+- Gaps: none
 
-**2. Placeholder scan:** TBD/TODO/「適切に処理」等なし。全コードステップは実コードを含む。
+**2. Placeholder scan:** No TBD/TODO or vague handling instructions. All code steps contain real code.
 
 **3. Type consistency:**
-- DB 接続跨ぎの `changes()` 問題を回避するため claim/block は UPDATE と `SELECT changes()` を**同一 `db_exec` 文字列**で実行（Task 9/12）。storage.sh の `db_exec` は 1 プロセスで複数文を実行する仕様（Task 2）と一致。
-- `AGK_AGENT`/`AGK_TEAM`/`AGKANBAN_STORAGE_PATH`/`AGMSG_SEND_CMD` のシーム名は全タスクで一貫。
-- self-skip 仕様（actor==宛先で送信しない）に合わせ、Task 8/9 の通知アサーションを「スキップ＝空」に修正済み。
-- 関数名 `fire_transition`/`fire_unblock`/`agmsg_send`/`agmsg_identity`/`agmsg_home`/`ensure_db`/`card_num`/`sql_val` は定義（Task 2/4/5）と呼び出し（Task 6–12）で一致。
+- To avoid cross-connection `changes()` issues, claim/block run UPDATE and `SELECT changes()` in the **same `db_exec` string** (Task 9/12). Matches `db_exec`'s spec of running multiple statements in one process (Task 2).
+- Seam names `AGK_AGENT`/`AGK_TEAM`/`AGKANBAN_STORAGE_PATH`/`AGMSG_SEND_CMD` are consistent across all tasks.
+- Self-skip behavior (no send when actor == recipient) accounted for; Task 8/9 notification assertions updated to expect empty output.
+- Function names `fire_transition`/`fire_unblock`/`agmsg_send`/`agmsg_identity`/`agmsg_home`/`ensure_db`/`card_num`/`sql_val` match between definitions (Task 2/4/5) and call sites (Task 6–12).

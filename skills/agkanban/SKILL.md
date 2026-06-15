@@ -5,45 +5,49 @@ description: Use when coordinating multi-agent tasks across Claude Code / Codex 
 
 # agkanban
 
-agmsg と組み合わせて使う kanban 型タスク状態管理。状態は team 単位の `board.db` に永続化し、
-カードの列遷移時に agmsg 経由で関係者へ自動通知する。識別（team/agent）は agmsg から借用する。
+Kanban-style task state management designed to pair with agmsg. State is persisted in a
+per-team `board.db`; card column transitions auto-notify stakeholders via agmsg.
+Identity (team/agent) is borrowed from agmsg.
 
-## 前提
+## Prerequisites
 
-- agmsg が install 済みで、このプロジェクトで team に join していること（`/agmsg` で確認）。
-- 未 join / agmsg 不在でもボード操作は動くが、通知はスキップされる。
+- agmsg installed and the project joined to a team (`/agmsg` to verify).
+- Board operations work without joining / without agmsg, but notifications are skipped.
 
-## 使い方
+## Usage
 
-すべて `scripts/agkanban.sh <subcommand>` を実行する。**引数なしで自分の担当カード（doing/review）を表示**する（専用の `mine` コマンドは持たない）。
+All commands run as `scripts/agkanban.sh <subcommand>`. **No arguments shows your assigned cards (doing/review)** (there is no separate `mine` command).
 
-| コマンド | 動作 |
+| Command | Action |
 |---|---|
-| `scripts/agkanban.sh` | 自分の担当カード（doing/review） |
-| `scripts/agkanban.sh board` | team のボード全体 |
-| `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | カード追加（todo） |
-| `scripts/agkanban.sh claim <id>` | 着手（doing・自分に割当、原子的） |
-| `scripts/agkanban.sh review <id>` | レビュー依頼（review へ） |
-| `scripts/agkanban.sh done <id>` | 完了（done へ） |
-| `scripts/agkanban.sh reopen <id>` | 差し戻し（todo へ） |
-| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | 汎用：任意の列へ（上記動詞のフォールバック） |
-| `scripts/agkanban.sh show <id>` | カード詳細 + イベント履歴 |
-| `scripts/agkanban.sh block <id> --by <id2>` | 依存設定 |
+| `scripts/agkanban.sh` | Your assigned cards (doing/review) |
+| `scripts/agkanban.sh board` | Full team board |
+| `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
+| `scripts/agkanban.sh claim <id>` | Claim (doing, assign to self, atomic) |
+| `scripts/agkanban.sh review <id>` | Request review (move to review) |
+| `scripts/agkanban.sh done <id>` | Mark done |
+| `scripts/agkanban.sh reopen <id>` | Reopen (back to todo) |
+| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
+| `scripts/agkanban.sh show <id>` | Card detail + event history |
+| `scripts/agkanban.sh block <id> --by <id2>` | Set dependency |
 
-`claim`/`review`/`done`/`reopen` は遷移ごとの意図を表す動詞で、内部的には `move` と同じく列遷移＋agmsg 自動通知を行う。任意の列へ動かしたいときだけ `move` を使う。
+`claim`/`review`/`done`/`reopen` are intent-specific transition verbs; internally they
+perform the same column move + agmsg auto-notification as `move`. Use `move` only when
+you need to target an arbitrary column.
 
-複数 team に所属する場合は各コマンドに `--team <name>` を付ける。
+Pass `--team <name>` on each command when you belong to multiple teams.
 
-## delivery（気づき）
+## Delivery (awareness)
 
-agkanban は独自の監視を持たない。遷移で発火した通知は **agmsg の delivery（turn/monitor/hook）** が運ぶ。
-カードは状態が永続するため、必要時に引数なし `agkanban` / `board` で pull すれば取りこぼさない。
+agkanban has no dedicated monitor. Notifications fired on transitions are delivered by
+**agmsg's delivery mechanism (turn/monitor/hook)**. Because state is persistent, running
+`agkanban` / `board` on demand is sufficient to catch up without missing anything.
 
-### SessionStart 自動 pull（任意）
+### SessionStart auto-pull (optional)
 
-`hooks/session-start.sh` を Claude Code の SessionStart hook に登録すると、各セッション開始時に
-自分の担当カードが自動で context に表示される（identity 未解決やカード無しのときは無音）。設定例
-（`~/.claude/settings.json`）:
+Register `hooks/session-start.sh` as a Claude Code SessionStart hook to automatically
+surface your assigned cards in context at every session start (silent when identity is
+unresolved or there are no cards). Example config (`~/.claude/settings.json`):
 
 ```json
 "hooks": {
@@ -54,13 +58,13 @@ agkanban は独自の監視を持たない。遷移で発火した通知は **ag
 }
 ```
 
-## 通知マッピング
+## Notification mapping
 
-| 遷移 | 通知先 |
+| Transition | Recipient |
 |---|---|
 | → doing | assignee |
-| → review | reviewer（無ければ creator） |
-| → done | creator（+ assignee が別なら両方） |
-| 依存先が done | 待ちカードの assignee |
+| → review | reviewer (falls back to creator) |
+| → done | creator (+ assignee if different) |
+| dependency done | assignee of the waiting card |
 
-自分自身宛の通知は送られない。
+Notifications to yourself are suppressed.

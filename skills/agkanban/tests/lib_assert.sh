@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 依存無しの最小アサーションハーネス。各 assert が ASSERT_FAILS を加算する。
+# Minimal dependency-free assertion harness. Each failed assert increments ASSERT_FAILS.
 ASSERT_FAILS=0
 
 assert_eq() { # actual expected label

@@ -1,86 +1,91 @@
-# agkanban 設計ドキュメント (v0)
+# agkanban Design Document (v0)
 
-- 日付: 2026-06-15
-- ステータス: 設計確定 / 実装プラン待ち
-- 著者: ysk411 + Claude Code
+- Date: 2026-06-15
+- Status: design finalized / implementation plan pending
+- Author: lucianlamp + Claude Code
 
-## 1. 目的
+## 1. Goal
 
-Claude Code / Codex などのマルチエージェント協調のための、**agmsg と組み合わせて真価を発揮する kanban 型タスク状態管理スキル**を作る。
+Build a **kanban-style task state management skill** for multi-agent coordination
+(Claude Code / Codex etc.) that pairs with agmsg for full value.
 
-- agmsg = 伝達層（揮発するメッセージ）
-- agkanban = 状態層（永続するボード）
+- agmsg = transport layer (volatile messages)
+- agkanban = state layer (persistent board)
 
-両者は責務を分離しつつ、**識別空間（team/agent）だけを共有**することで「カードを動かす＝関係者にメッセージが自動で流れる」を成立させる。
+The two layers share only an identity space (team/agent), keeping responsibilities
+separate while enabling "moving a card = notifications flow to stakeholders
+automatically."
 
-## 2. 設計判断（確定事項）
+## 2. Design decisions (finalized)
 
-| # | 論点 | 決定 | 理由 |
+| # | Issue | Decision | Rationale |
 |---|---|---|---|
-| 1 | agmsg との結合 | **イベント駆動結合** | カードの列遷移が agmsg メッセージを自動発火。「ボードが動くと会話が流れる」 |
-| 2 | ボードのスコープ | **team 単位**（1 team = 1 board） | agmsg のメッセージスコープと一致し、assignee = agmsg 宛先名 が自然に成立 |
-| 3 | ストレージ | **独立 DB `board.db`**（agmsg の messages.db は不可侵） | agmsg をフォークせず疎結合を保つ。DB 直編集禁止方針を尊重 |
-| 4 | 配置 | **`~/.agents/skills/agkanban/`**（= `~/.claude/skills/agkanban`、symlink で同一実体） | agmsg と兄弟配置。相対パス参照が両名前空間から安定解決 |
-| 5 | delivery（気づき） | **agmsg 相乗り + on-demand pull**（独自 monitor/hook は作らない） | push 通知は agmsg の turn/monitor/hook が運ぶ。状態は永続なので pull で取りこぼさない |
+| 1 | Coupling to agmsg | **Event-driven coupling** | Card column transitions auto-fire agmsg messages. "Board moves → conversation flows." |
+| 2 | Board scope | **Per team** (1 team = 1 board) | Aligns with agmsg's message scope; assignee = agmsg recipient name follows naturally. |
+| 3 | Storage | **Independent DB `board.db`** (agmsg's messages.db is off-limits) | No fork of agmsg; stays loosely coupled. Respects the no-direct-DB-edit policy. |
+| 4 | Placement | **`~/.agents/skills/agkanban/`** (= `~/.claude/skills/agkanban`, same inode via symlink) | Sibling of agmsg; relative-path resolution works stably from both namespaces. |
+| 5 | Delivery (awareness) | **Piggyback on agmsg + on-demand pull** (no dedicated monitor/hook) | Push notifications carried by agmsg's turn/monitor/hook. State is persistent so pull never misses anything. |
 
-## 3. アーキテクチャ
+## 3. Architecture
 
 ```
-                 共有される識別空間 (team / agent)
+                 Shared identity space (team / agent)
                  ┌───────────────────────────────┐
-   agkanban ─────┤  whoami.sh で借用              ├───── agmsg
-  (状態/永続)    └───────────────────────────────┘   (伝達/揮発)
+   agkanban ─────┤  borrowed via whoami.sh        ├───── agmsg
+  (state/persistent)  └───────────────────────────────┘   (transport/volatile)
        │                                                  │
    board.db (cards, card_events)                    messages.db
        │                                                  ▲
-       └── 列遷移イベント ──→ events.sh ──→ send.sh ───────┘
-                                          (AGMSG_SEND_CMD で差替可)
+       └── column transition event ──→ events.sh ──→ send.sh ───────┘
+                                          (swappable via AGMSG_SEND_CMD)
 ```
 
-### 3.1 識別の借用
+### 3.1 Identity borrowing
 
-agkanban は自前で join しない。各操作の冒頭で agmsg の識別解決を呼ぶ。
-ただし agmsg の場所は**堅牢に探索**する（開発時は `~/dev/agkanban` にいて agmsg が兄弟にいないため）:
+agkanban does not join teams itself. Each operation begins by calling agmsg's
+identity resolution. The agmsg location is **probed robustly** (during development
+`~/dev/agkanban` has no agmsg sibling):
 
 ```
-agmsg 探索順（lib/agmsg.sh）:
-  1. $AGMSG_HOME（env 明示）
-  2. <agkanban>/../agmsg          # 本番: ~/.agents/skills/agmsg と兄弟
+agmsg search order (lib/agmsg.sh):
+  1. $AGMSG_HOME (explicit env)
+  2. <agkanban>/../agmsg          # production: sibling of ~/.agents/skills/agmsg
   3. ~/.agents/skills/agmsg
-  4. ~/.claude/skills/agmsg       # symlink 実体は 3 と同じだが念のため
-  → いずれも無ければフォールバックモード（§3.5）
+  4. ~/.claude/skills/agmsg       # symlink of 3, kept as fallback
+  → if none found: fallback mode (§3.5)
 ```
 
-発見した agmsg に対して `scripts/whoami.sh "$(pwd)" <type>` を呼んで識別解決する。
+The found agmsg is called as `scripts/whoami.sh "$(pwd)" <type>` to resolve identity.
 
-- 単一 team が解決される場合: それを操作対象とする
-- 複数 team の場合: `--team <name>` を必須にする（曖昧さを排除）
-- 未 join / agmsg 不在の場合: §3.5 フォールバックへ
+- Single team resolved: use it as the target.
+- Multiple teams: `--team <name>` is required (eliminates ambiguity).
+- Not joined / no agmsg: fall through to §3.5 fallback.
 
-カードの `assignee` / `reviewer` / `creator` は **agmsg の agent 名**であり、そのまま agmsg メッセージの宛先になる。
+Card `assignee` / `reviewer` / `creator` are **agmsg agent names** and serve directly
+as agmsg message recipients.
 
-### 3.2 データモデル（board.db, WAL）
+### 3.2 Data model (board.db, WAL)
 
 ```sql
 CREATE TABLE cards (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,  -- 表示は card-<id>
-  team       TEXT NOT NULL,                      -- agmsg の team と一致
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,  -- displayed as card-<id>
+  team       TEXT NOT NULL,                      -- matches agmsg team
   title      TEXT NOT NULL,
   col        TEXT NOT NULL DEFAULT 'todo',       -- todo|doing|review|done
-  assignee   TEXT,                               -- agmsg agent 名（doing 通知先）
-  reviewer   TEXT,                               -- review 通知先
-  creator    TEXT,                               -- 起票者（done 通知先）
-  blocked_by INTEGER,                            -- 依存カードの id（任意）
-  body       TEXT,                               -- 詳細・受け入れ条件
+  assignee   TEXT,                               -- agmsg agent name (doing notification recipient)
+  reviewer   TEXT,                               -- review notification recipient
+  creator    TEXT,                               -- card creator (done notification recipient)
+  blocked_by INTEGER,                            -- id of blocking card (optional)
+  body       TEXT,                               -- description / acceptance criteria
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE card_events (                        -- 監査ログ
+CREATE TABLE card_events (                        -- audit log
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   card_id  INTEGER NOT NULL,
   team     TEXT NOT NULL,
-  actor    TEXT,                                  -- 操作したエージェント
+  actor    TEXT,                                  -- agent that performed the action
   from_col TEXT,
   to_col   TEXT,
   at       TEXT NOT NULL
@@ -90,77 +95,87 @@ CREATE INDEX idx_cards_team_col ON cards(team, col);
 CREATE INDEX idx_cards_assignee ON cards(team, assignee);
 ```
 
-- カード ID は DB 全体で一意な整数。表示・メッセージ参照は `card-<id>`（例: `card-12`）。逆参照は `card-` を剥がして解決
-- 列は v0 固定の 4 値（todo / doing / review / done）
+- Card IDs are unique integers across the DB. Display and message references use
+  `card-<id>` (e.g. `card-12`). Reverse lookup strips the `card-` prefix.
+- Columns are fixed to 4 values in v0: todo / doing / review / done.
 
-### 3.3 イベント → agmsg 自動発火（核心）
+### 3.3 Event → agmsg auto-fire (core)
 
-列遷移時に `events.sh` が宣言的マッピング表を引いて `send.sh` を呼ぶ。`from_agent` は操作した本人（whoami で解決）。
+On a column transition, `events.sh` consults a declarative mapping table and calls
+`send.sh`. `from_agent` is the operator resolved via whoami.
 
-| 遷移 | 送信先 | メッセージ本文（例） |
+| Transition | Recipient | Message body (example) |
 |---|---|---|
-| `* → doing` | `assignee` | `[agkanban] card-12 着手依頼: <title>` |
-| `* → review` | `reviewer`（無ければ `creator`） | `[agkanban] card-12 review待ち: <title>` |
-| `* → done` | `creator`（+ `assignee` が別なら両方） | `[agkanban] card-12 完了: <title>` |
-| `blocked_by 解消`（依存先が done） | 待ちカードの `assignee` | `[agkanban] card-09 のブロック解除` |
+| `* → doing` | `assignee` | `[agkanban] card-12 start requested: <title>` |
+| `* → review` | `reviewer` (or `creator`) | `[agkanban] card-12 review requested: <title>` |
+| `* → done` | `creator` (+ `assignee` if different) | `[agkanban] card-12 done: <title>` |
+| `blocked_by` resolved (dependency done) | `assignee` of waiting card | `[agkanban] card-09 unblocked (card-done_id done)` |
 
-- メッセージ本文には必ず `card-<id>` を含める → agmsg 側からカードを一意に逆参照できる
-- 送信先が未設定（例: assignee 無しで doing へ）の場合は送信をスキップし、その旨を stderr に警告
-- 自分自身宛になる場合は送信しない（ノイズ抑制）
+- Message body always includes `card-<id>` → agmsg side can reverse-reference the card uniquely.
+- If the recipient is unset (e.g. no assignee when moving to doing), skip the send and warn to stderr.
+- Skip if the recipient equals the sender (noise suppression).
 
-### 3.4 delivery（気づき）
+### 3.4 Delivery (awareness)
 
-- **push**: agkanban は独自の監視を持たない。発火した agmsg メッセージは agmsg の既存 delivery（turn/monitor/hook）が運ぶ
-- **pull**: 状態は永続するため、エージェントは必要時に引く
-  - `agkanban mine`（= 引数なしの既定） — 自分が assignee で `doing`/`review` にあるカードを列挙（agmsg の turn モードのボード版。メッセージ配信より堅牢）
-  - `agkanban board` — team のボード全体
+- **Push**: agkanban has no dedicated monitor. Fired agmsg messages are delivered by
+  agmsg's existing delivery mechanisms (turn/monitor/hook).
+- **Pull**: state is persistent; agents pull on demand.
+  - `agkanban mine` (= no-arg default) — lists cards where you are assignee and col is
+    `doing`/`review` (board-side equivalent of agmsg's turn mode; more reliable than
+    message delivery).
+  - `agkanban board` — full team board.
 
-### 3.5 競合・整合性・フォールバック
+### 3.5 Concurrency, consistency, and fallback
 
-- **claim 競合**: 原子的な条件付き UPDATE で 1 人だけ成功させる
+- **claim conflict**: atomic conditional UPDATE ensures only one agent succeeds:
   ```sql
   UPDATE cards SET assignee=:me, col='doing', updated_at=:now
    WHERE id=:id AND team=:team AND (assignee IS NULL OR assignee=:me);
   ```
-  直後に `changes()` を確認。0 なら「既に他者が claim 済み」を返す
-- **状態の正**: board.db が唯一の正。agmsg メッセージは揮発する合図にすぎない
-- **agmsg 不在 / 未 join 時**: 識別解決や send.sh 呼び出しが失敗しても、**ボードの状態遷移は実行する**。通知だけスキップして警告を出す（kanban は単体でも動く）
+  Check `changes()` immediately after. 0 means "already claimed by someone else."
+- **Source of truth**: board.db is the sole source of truth. agmsg messages are
+  volatile signals only.
+- **No agmsg / not joined**: if identity resolution or send.sh calls fail, **the
+  board state transition still executes**. Only the notification is skipped, with a
+  warning (kanban works standalone).
 
-## 4. コマンドインターフェース
+## 4. Command interface
 
-`/agkanban` スキルから呼ぶ。agmsg と同じく「スクリプト経由のみ・DB 直叩き禁止」。
+Invoked via the `/agkanban` skill. Like agmsg: scripts only, no direct DB access.
 
 ```
-/agkanban                          # 引数なし = mine と同じ（自分の担当カード）
-/agkanban mine                     # 自分が担当の doing/review カード（= 引数なしと同一挙動）
+/agkanban                          # no args = mine (your assigned cards)
+/agkanban mine                     # cards where you are assignee in doing/review (= no-arg)
 /agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."]
-/agkanban move <id> <column>       # ← ここで自動 agmsg 発火
-/agkanban claim <id>               # assignee=自分 にして doing へ（原子的）
-/agkanban show <id>                # カード詳細 + イベント履歴
-/agkanban block <id> --by <id2>    # 依存設定
-/agkanban board                    # team のボード全体（列ごとの一覧）
+/agkanban move <id> <column>       # ← triggers agmsg auto-fire
+/agkanban claim <id>               # set assignee=self and move to doing (atomic)
+/agkanban show <id>                # card detail + event history
+/agkanban block <id> --by <id2>    # set dependency
+/agkanban board                    # full team board (per-column listing)
 ```
 
-**引数なしの既定動作は `mine`**（agmsg の「引数なし = inbox を見る」と同じ思想 — 「自分に何が来ているか」をまず見せる）。team のボード全体は明示的に `board` を使う。
+**The default no-arg behavior is `mine`** (same philosophy as agmsg's "no args = see
+your inbox" — show what's waiting for you first). Use `board` explicitly for the full
+team board.
 
-複数 team に所属する場合、各コマンドは `--team <name>` を受け付ける。
+Pass `--team <name>` on each command when you belong to multiple teams.
 
-## 5. ディレクトリ構成
+## 5. Directory layout
 
-開発リポジトリ（= リポジトリ root がそのままスキル本体）として作り、GitHub へ push する。
-install するとこの内容が `~/.agents/skills/agkanban/` に展開される。
+Developed as a repo (root = skill itself), pushed to GitHub. Installing expands this
+content to `~/.agents/skills/agkanban/`.
 
 ```
 ~/dev/agkanban/                  # git repo → github.com/lucianlamp/agkanban
-├── SKILL.md                     # スキル本体（frontmatter + 識別解決 → サブコマンド分岐）
-├── README.md                    # ワンライナー install（§9）+ 使い方
+├── SKILL.md                     # skill entry point (frontmatter + identity guidance + subcommand dispatch)
+├── README.md                    # one-liner install (§9) + usage
 ├── LICENSE
-├── .gitignore                   # db/ は実行時生成物として無視
+├── .gitignore                   # db/ is runtime-generated; excluded from repo
 ├── scripts/
 │   ├── lib/
-│   │   ├── storage.sh           # board.db パス解決（env AGKANBAN_STORAGE_PATH > 既定 <skill>/db）
-│   │   ├── agmsg.sh             # agmsg 探索（§3.1）・whoami 解決・send ラッパ（AGMSG_SEND_CMD seam）
-│   │   └── events.sh            # 遷移→通知マッピング
+│   │   ├── storage.sh           # board.db path resolution (env AGKANBAN_STORAGE_PATH > default <skill>/db)
+│   │   ├── agmsg.sh             # agmsg discovery (§3.1), whoami resolution, send wrapper (AGMSG_SEND_CMD seam)
+│   │   └── events.sh            # transition → notification mapping
 │   ├── init-db.sh
 │   ├── add.sh
 │   ├── move.sh
@@ -175,45 +190,57 @@ install するとこの内容が `~/.agents/skills/agkanban/` に展開される
     └── test_transitions.sh
 ```
 
-- `db/board.db` は実行時に `init-db.sh` が生成する（リポジトリには含めない＝`.gitignore`）
-- 開発（`~/dev/agkanban`）と本番（`~/.agents/skills/agkanban`）でパスが異なるが、agmsg 探索（§3.1）と storage パス解決（env 優先）により両方で動く
+- `db/board.db` is created at runtime by `init-db.sh` (not committed; in `.gitignore`).
+- Development (`~/dev/agkanban`) and production (`~/.agents/skills/agkanban`) differ in
+  path, but the agmsg discovery (§3.1) and storage path resolution (env takes priority)
+  make both work.
 
-## 6. テスト方針
+## 6. Testing strategy
 
-- **状態遷移の単体テスト**: 一時 DB（`AGKANBAN_STORAGE_PATH=$(mktemp -d)`）に対し add → move → claim → block を実行し、`cards` と `card_events` の結果を assert
-- **claim 競合**: 同一カードへの 2 連続 claim で 1 回目成功・2 回目失敗を確認
-- **agmsg 発火の検証**: `AGMSG_SEND_CMD` を記録用スクリプト（引数をファイルに追記）へ差し替え、各遷移で正しい宛先・本文（`card-<id>` を含む）が渡るかを assert
-- **フォールバック**: agmsg を見つけられない状況をシミュレートし、状態遷移は成功・通知はスキップ（警告のみ）を確認
+- **State transition unit tests**: run add → move → claim → block against a temp DB
+  (`AGKANBAN_STORAGE_PATH=$(mktemp -d)`) and assert `cards` and `card_events` results.
+- **claim conflict**: run two consecutive claims on the same card; verify first succeeds,
+  second fails.
+- **agmsg fire verification**: replace `AGMSG_SEND_CMD` with a recording script (appends
+  args to a file), then assert that each transition sends to the correct recipient with
+  a body containing `card-<id>`.
+- **Fallback**: simulate agmsg not found; verify state transition succeeds and
+  notification is skipped (warning only).
 
-## 7. スコープ外（YAGNI）
+## 7. Out of scope (YAGNI)
 
-v0 では以下を作らない。必要になったら別 spec で追加する。
+Not built in v0. Add via a separate spec if needed.
 
-- Web UI / ダッシュボード（pull コマンドの CLI 表示で足りる）
-- priority / due date / label / estimate などのフィールド（v0 は最小フィールドのみ）
-- team を跨ぐボード、グローバルボード
-- agkanban 独自の monitor / リアルタイム push
-- PR 自動化・ACP 連携・worktree 統合
+- Web UI / dashboard (CLI pull commands are sufficient)
+- priority / due date / label / estimate fields (v0 has minimal fields only)
+- Cross-team or global boards
+- agkanban-specific monitor / real-time push
+- PR automation, ACP integration, worktree integration
 
-## 8. 配布とインストール
+## 8. Distribution and installation
 
-開発は `~/dev/agkanban`（git repo）で行い、`github.com/lucianlamp/agkanban` へ push する。
-リポジトリは整備後に public にする（それまで private、install 検証は §3.1 のローカル経路で可能）。
+Developed at `~/dev/agkanban` (git repo), pushed to `github.com/lucianlamp/agkanban`.
+The repo starts private and is made public later (install verification uses the local
+path from §3.1 in the meantime).
 
-README に載せるワンライナー install（**skills.sh 主 + gh cli 代替**）:
+One-liner install in README (**skills.sh primary + gh cli alternative**):
 
 ```bash
-# 主: skills.sh（~/.agents/skills に自動配置・更新追跡可）
+# primary: skills.sh (auto-places in ~/.agents/skills; tracks updates)
 npx --yes skills add lucianlamp/agkanban -g -y
 
-# 代替: gh cli（preview 機能。--scope user で ~/.claude/skills = ~/.agents/skills へ）
+# alternative: gh cli (preview feature; --scope user puts it in ~/.claude/skills = ~/.agents/skills)
 gh skill install lucianlamp/agkanban --agent claude-code --scope user
 ```
 
-- 両方式の共通要件は「正しい frontmatter（`name` / `description`）を持つ root の `SKILL.md`」。単一スキルなのでリポジトリ root に置けば両対応できる
-- install 後の配置は `~/.agents/skills/agkanban/`（agmsg と兄弟）。§3.1 の探索順 2/3 にヒットする
-- 前提: agmsg（`~/.agents/skills/agmsg`）が install 済みであること。未 install なら agkanban はフォールバックモード（通知なし）で動く。README に「agmsg と併用して真価を発揮する」と明記する
+- Both methods require a root `SKILL.md` with correct frontmatter (`name` / `description`).
+  A single skill repo can support both by placing SKILL.md at the root.
+- After installation the skill lands at `~/.agents/skills/agkanban/` (sibling of agmsg),
+  which matches search order entries 2/3 in §3.1.
+- Prerequisite: agmsg (`~/.agents/skills/agmsg`) installed. Without it, agkanban runs in
+  fallback mode (no notifications). README states "works best paired with agmsg."
 
-## 9. 未解決の論点
+## 9. Open issues
 
-なし（主要決定はすべて確定）。実装中に判明した細部は実装プラン側で扱う。
+None (all major decisions finalized). Implementation-time details are handled in the
+implementation plan.

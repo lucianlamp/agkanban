@@ -17,7 +17,7 @@ done
 [ -z "$TITLE" ] && { echo "agkanban add: title required" >&2; exit 2; }
 
 ensure_db
-agmsg_identity || true   # 未解決でも creator 空で続行可
+agmsg_identity || true   # if unresolved, creator is left empty and we continue
 creator="${AGK_AGENT:-}"
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban add: team unresolved (join agmsg or pass --team)" >&2; exit 1; }

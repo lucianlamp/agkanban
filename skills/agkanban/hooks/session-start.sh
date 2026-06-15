@@ -25,5 +25,5 @@ out="$(bash "$AGK" 2>/dev/null)" || exit 0
 n="$(printf '%s\n' "$out" | grep -c 'card-')" || n=0
 [ "${n:-0}" -eq 0 ] && exit 0
 
-printf 'agkanban — あなたの担当カード（セッション開始時の自動確認）:\n%s\n' "$out"
+printf 'agkanban — your assigned cards (auto-checked at session start):\n%s\n' "$out"
 exit 0

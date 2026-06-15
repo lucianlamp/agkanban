@@ -21,14 +21,14 @@ team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$me" ] && { echo "agkanban claim: agent unresolved (join agmsg)" >&2; exit 1; }
 [ -z "$team" ] && { echo "agkanban claim: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 
-# 遷移前情報（タイトル・元列）。存在しないなら not found。
+# Pre-transition data (title, current column). If missing: not found.
 row="$(db_exec "SELECT col,title,COALESCE(reviewer,''),COALESCE(creator,'') FROM cards WHERE id=$num AND team='$(sql_escape "$team")';")"
 [ -z "$row" ] && { echo "agkanban claim: card-$num not found in team $team" >&2; exit 1; }
 IFS='|' read -r from_col title reviewer creator <<EOF
 $row
 EOF
 
-# 原子的 claim: 同一接続で UPDATE と changes() を実行。
+# Atomic claim: run UPDATE and changes() in the same connection.
 now="$(db_now)"
 changed="$(db_exec "UPDATE cards SET assignee='$(sql_escape "$me")', col='doing', updated_at='$now'
                     WHERE id=$num AND team='$(sql_escape "$team")' AND (assignee IS NULL OR assignee='$(sql_escape "$me")');

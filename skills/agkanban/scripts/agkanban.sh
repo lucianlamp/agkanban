@@ -2,8 +2,8 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# 引数なし = 自分の担当カード（doing/review）。これが既定動作で、
-# 別名の 'mine' サブコマンドは持たない（混乱防止のため一本化）。
+# No args = your assigned cards (doing/review). This is the default behavior.
+# There is no separate 'mine' subcommand (consolidated to avoid confusion).
 if [ "$#" -eq 0 ]; then
   exec bash "$DIR/mine.sh"
 fi
@@ -15,26 +15,26 @@ case "$sub" in
   claim)  exec bash "$DIR/claim.sh" "$@" ;;
   show)   exec bash "$DIR/show.sh" "$@" ;;
   block)  exec bash "$DIR/block.sh" "$@" ;;
-  # 意味的な遷移動詞（move <id> <col> の薄いラッパ）。列名を末尾に付けて move へ委譲。
+  # Semantic transition verbs (thin wrappers over move <id> <col>). Append column name and delegate to move.
   review) exec bash "$DIR/move.sh" "$@" review ;;
   done)   exec bash "$DIR/move.sh" "$@" done ;;
   reopen) exec bash "$DIR/move.sh" "$@" todo ;;
-  # 汎用フォールバック（任意の列へ）。
+  # Generic fallback (move to any column).
   move)   exec bash "$DIR/move.sh" "$@" ;;
   mine)
-    echo "agkanban: 'mine' は既定動作です。引数なしで 'agkanban' を実行してください。" >&2
+    echo "agkanban: 'mine' is the default — just run 'agkanban' with no arguments." >&2
     exit 2 ;;
   -h|--help|help)
     cat <<'USAGE'
-agkanban — agmsg と組み合わせる kanban 型タスク管理
-  agkanban                       自分の担当カード（doing/review）
-  agkanban board                 team のボード全体
+agkanban — kanban task management paired with agmsg
+  agkanban                       your assigned cards (doing/review)
+  agkanban board                 full team board
   agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."] [--team T]
-  agkanban claim <id> [--team T]    着手（doing・自分に割当）
-  agkanban review <id> [--team T]   レビュー依頼（review）
-  agkanban done <id> [--team T]     完了（done）
-  agkanban reopen <id> [--team T]   差し戻し（todo）
-  agkanban move <id> <todo|doing|review|done> [--team T]   汎用（任意の列へ）
+  agkanban claim <id> [--team T]    claim (doing, assign to self)
+  agkanban review <id> [--team T]   request review (move to review)
+  agkanban done <id> [--team T]     mark done
+  agkanban reopen <id> [--team T]   reopen (back to todo)
+  agkanban move <id> <todo|doing|review|done> [--team T]   generic (any column)
   agkanban show <id> [--team T]
   agkanban block <id> --by <id2> [--team T]
 USAGE

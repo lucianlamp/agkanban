@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# storage.sh — board.db のパス解決と DB 実行ヘルパ。
-# 解決順: AGKANBAN_STORAGE_PATH(env) > 既定 <skill>/db
+# storage.sh — board.db path resolution and DB exec helpers.
+# Resolution order: AGKANBAN_STORAGE_PATH(env) > default <skill>/db
 
 agkanban_storage_dir() {
   if [ -n "${AGKANBAN_STORAGE_PATH:-}" ]; then
@@ -9,7 +9,7 @@ agkanban_storage_dir() {
   fi
   local lib_dir skill_root
   lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  skill_root="$(cd "$lib_dir/../.." && pwd)"   # lib -> scripts -> skill root
+  skill_root="$(cd "$lib_dir/../.." && pwd)"   # lib → scripts → skill root
   printf '%s/db' "$skill_root"
 }
 
@@ -19,15 +19,15 @@ db_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
 
-# 空なら NULL、それ以外は 'escaped' を返す（SQL リテラル生成用）
+# Returns NULL for empty, or 'escaped' for non-empty (SQL literal generation)
 sql_val() {
   if [ -z "${1:-}" ]; then printf 'NULL'; else printf "'%s'" "$(sql_escape "$1")"; fi
 }
 
-# 1 回の sqlite3 プロセスで SQL を実行（複数文は同一接続 → changes() が有効）
+# Run SQL in a single sqlite3 process (multiple statements share one connection → changes() works)
 db_exec() { sqlite3 -batch "$(agkanban_db)" "$1"; }
 
-# DB が無ければ init-db.sh で作る
+# Create DB via init-db.sh if it does not exist
 ensure_db() {
   local db; db="$(agkanban_db)"
   if [ ! -f "$db" ]; then
@@ -36,7 +36,7 @@ ensure_db() {
   fi
 }
 
-# "card-12" / "12" を 12 に正規化。非数値は stderr + return 1
+# Normalize "card-12" / "12" to 12. Non-numeric input prints to stderr and returns 1.
 card_num() {
   local raw="${1#card-}"
   case "$raw" in
