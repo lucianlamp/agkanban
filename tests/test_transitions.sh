@@ -31,4 +31,10 @@ tables="$(sqlite3 "$TMP/board.db" ".tables")"
 assert_contains "$tables" "cards" "init-db creates cards table"
 assert_contains "$tables" "card_events" "init-db creates card_events table"
 
+# --- Task 6: add ---
+out="$(bash "$AGK" add "first task" --assignee bob --reviewer carol)"
+assert_contains "$out" "card-1" "add returns card-1"
+row="$(sqlite3 "$TMP/board.db" "SELECT team,col,assignee,reviewer,creator,title FROM cards WHERE id=1;")"
+assert_eq "$row" "dev|todo|bob|carol|alice|first task" "add inserts row (todo, creator=alice)"
+
 finish
