@@ -6,7 +6,7 @@ DB="$(agkanban_db)"
 mkdir -p "$(dirname "$DB")"
 
 if [ ! -f "$DB" ]; then
-  sqlite3 "$DB" <<'SQL'
+  sqlite3 "$DB" >/dev/null <<'SQL'
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE cards (
