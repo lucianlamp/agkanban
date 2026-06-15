@@ -37,4 +37,10 @@ assert_contains "$out" "card-1" "add returns card-1"
 row="$(sqlite3 "$TMP/board.db" "SELECT team,col,assignee,reviewer,creator,title FROM cards WHERE id=1;")"
 assert_eq "$row" "dev|todo|bob|carol|alice|first task" "add inserts row (todo, creator=alice)"
 
+# --- Task 7: board ---
+out="$(bash "$AGK" board)"
+assert_contains "$out" "todo" "board shows todo column"
+assert_contains "$out" "card-1" "board lists card-1"
+assert_contains "$out" "first task" "board shows title"
+
 finish
