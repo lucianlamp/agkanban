@@ -130,4 +130,16 @@ assert_contains "$out" "card-5: " "move succeeds even when notify fails"
 col5="$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=5;")"
 assert_eq "$col5" "doing" "state transition persists despite notify failure"
 
+# --- 意味的な遷移動詞: review / done / reopen（move の薄いラッパ）---
+bash "$AGK" add "verb card" --assignee bob --reviewer carol >/dev/null
+vid="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
+: > "$AGK_TEST_SENT"
+bash "$AGK" review "$vid" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "review" "review verb -> review column"
+assert_contains "$(cat "$AGK_TEST_SENT")" "dev|alice|carol|" "review verb notifies reviewer"
+bash "$AGK" done "$vid" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "done" "done verb -> done column"
+bash "$AGK" reopen "$vid" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "todo" "reopen verb -> todo column"
+
 finish

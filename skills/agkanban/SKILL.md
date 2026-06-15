@@ -22,10 +22,15 @@ agmsg と組み合わせて使う kanban 型タスク状態管理。状態は te
 | `scripts/agkanban.sh` | 自分の担当カード（doing/review） |
 | `scripts/agkanban.sh board` | team のボード全体 |
 | `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | カード追加（todo） |
-| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | 列遷移（ここで agmsg 自動通知） |
-| `scripts/agkanban.sh claim <id>` | assignee=自分 にして doing へ（原子的） |
+| `scripts/agkanban.sh claim <id>` | 着手（doing・自分に割当、原子的） |
+| `scripts/agkanban.sh review <id>` | レビュー依頼（review へ） |
+| `scripts/agkanban.sh done <id>` | 完了（done へ） |
+| `scripts/agkanban.sh reopen <id>` | 差し戻し（todo へ） |
+| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | 汎用：任意の列へ（上記動詞のフォールバック） |
 | `scripts/agkanban.sh show <id>` | カード詳細 + イベント履歴 |
 | `scripts/agkanban.sh block <id> --by <id2>` | 依存設定 |
+
+`claim`/`review`/`done`/`reopen` は遷移ごとの意図を表す動詞で、内部的には `move` と同じく列遷移＋agmsg 自動通知を行う。任意の列へ動かしたいときだけ `move` を使う。
 
 複数 team に所属する場合は各コマンドに `--team <name>` を付ける。
 
