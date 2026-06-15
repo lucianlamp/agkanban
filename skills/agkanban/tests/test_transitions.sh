@@ -88,14 +88,17 @@ set -e
 assert_eq "$rc" "1" "second claim by carol exits 1"
 assert_contains "$out2" "already claimed" "second claim reports conflict"
 
-# --- Task 10: mine（no-arg = mine）---
+# --- Task 10: 自分の担当カード（引数なし = mine 相当）---
 # bob は card-1(done)・card-3(doing) を持つ。doing/review のみ列挙 → card-3 のみ。
-mine_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" mine)"
-assert_contains "$mine_bob" "card-3" "mine lists bob's doing card"
-assert_not_contains "$mine_bob" "card-1" "mine excludes done card"
-# no-arg は mine と同一
 noarg_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
-assert_eq "$noarg_bob" "$mine_bob" "no-arg behaves like mine"
+assert_contains "$noarg_bob" "card-3" "no-arg lists bob's doing card"
+assert_not_contains "$noarg_bob" "card-1" "no-arg excludes done card"
+# 'mine' サブコマンドは削除済み: 既定動作へ案内して exit 2
+set +e
+mine_out="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" mine 2>&1)"; mrc=$?
+set -e
+assert_eq "$mrc" "2" "'mine' subcommand removed (exits 2)"
+assert_contains "$mine_out" "既定動作" "'mine' points users to the no-arg default"
 
 # --- Task 11: show ---
 out="$(bash "$AGK" show 1)"

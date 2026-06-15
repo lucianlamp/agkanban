@@ -15,12 +15,11 @@ agmsg と組み合わせて使う kanban 型タスク状態管理。状態は te
 
 ## 使い方
 
-すべて `scripts/agkanban.sh <subcommand>` を実行する。引数なしは `mine`。
+すべて `scripts/agkanban.sh <subcommand>` を実行する。**引数なしで自分の担当カード（doing/review）を表示**する（専用の `mine` コマンドは持たない）。
 
 | コマンド | 動作 |
 |---|---|
-| `scripts/agkanban.sh` | 自分の担当カード（= mine） |
-| `scripts/agkanban.sh mine` | 自分の doing/review カード |
+| `scripts/agkanban.sh` | 自分の担当カード（doing/review） |
 | `scripts/agkanban.sh board` | team のボード全体 |
 | `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | カード追加（todo） |
 | `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | 列遷移（ここで agmsg 自動通知） |
@@ -33,7 +32,22 @@ agmsg と組み合わせて使う kanban 型タスク状態管理。状態は te
 ## delivery（気づき）
 
 agkanban は独自の監視を持たない。遷移で発火した通知は **agmsg の delivery（turn/monitor/hook）** が運ぶ。
-カードは状態が永続するため、必要時に `mine` / `board` で pull すれば取りこぼさない。
+カードは状態が永続するため、必要時に引数なし `agkanban` / `board` で pull すれば取りこぼさない。
+
+### SessionStart 自動 pull（任意）
+
+`hooks/session-start.sh` を Claude Code の SessionStart hook に登録すると、各セッション開始時に
+自分の担当カードが自動で context に表示される（identity 未解決やカード無しのときは無音）。設定例
+（`~/.claude/settings.json`）:
+
+```json
+"hooks": {
+  "SessionStart": [
+    { "hooks": [ { "type": "command",
+      "command": "bash ~/.agents/skills/agkanban/hooks/session-start.sh" } ] }
+  ]
+}
+```
 
 ## 通知マッピング
 

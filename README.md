@@ -27,9 +27,11 @@ gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
 scripts/agkanban.sh add "design API" --assignee codex --reviewer claude
 scripts/agkanban.sh claim 1        # assignee=自分, doing へ（原子的）
 scripts/agkanban.sh move 1 review  # reviewer へ自動通知
-scripts/agkanban.sh                # 引数なし = 自分の担当（mine）
+scripts/agkanban.sh                # 引数なし = 自分の担当カード（doing/review）
 scripts/agkanban.sh board          # ボード全体
 ```
+
+> 引数なしの `agkanban` が「自分の担当」を表示する唯一の入口。専用の `mine` コマンドは無い。
 
 ## How it works
 
@@ -37,6 +39,23 @@ scripts/agkanban.sh board          # ボード全体
 - **識別**: agmsg の `whoami.sh` から team/agent を借用（`AGMSG_HOME` / 兄弟ディレクトリ / `~/.agents/skills/agmsg` を探索）。
 - **通知**: 列遷移時に agmsg の `send.sh` を発火（`AGMSG_SEND_CMD` で差替可・テスト用）。
 - **delivery**: agmsg の turn/monitor/hook に相乗り。agkanban 独自の監視は持たない。
+
+## Auto-pull (SessionStart hook, optional)
+
+各エージェントがセッション開始時に自分の担当カードを自動で見るには、`hooks/session-start.sh`
+を Claude Code の SessionStart hook に登録する。identity 未解決やカード無しのときは無音なので、
+agkanban を使わないプロジェクトでは何も起きない。
+
+`~/.claude/settings.json`:
+
+```json
+"hooks": {
+  "SessionStart": [
+    { "hooks": [ { "type": "command",
+      "command": "bash ~/.agents/skills/agkanban/hooks/session-start.sh" } ] }
+  ]
+}
+```
 
 ## Test
 
