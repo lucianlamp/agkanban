@@ -88,4 +88,13 @@ set -e
 assert_eq "$rc" "1" "second claim by carol exits 1"
 assert_contains "$out2" "already claimed" "second claim reports conflict"
 
+# --- Task 10: mine（no-arg = mine）---
+# bob は card-1(done)・card-3(doing) を持つ。doing/review のみ列挙 → card-3 のみ。
+mine_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" mine)"
+assert_contains "$mine_bob" "card-3" "mine lists bob's doing card"
+assert_not_contains "$mine_bob" "card-1" "mine excludes done card"
+# no-arg は mine と同一
+noarg_bob="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
+assert_eq "$noarg_bob" "$mine_bob" "no-arg behaves like mine"
+
 finish
