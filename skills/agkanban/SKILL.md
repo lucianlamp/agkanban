@@ -37,6 +37,10 @@ you need to target an arbitrary column.
 
 Pass `--team <name>` on each command when you belong to multiple teams.
 
+In a team, `--assignee` / `--reviewer` are agmsg agent names (list them with `/agmsg team`),
+and the board + notifications are shared with teammate agents on the same machine. Run
+agkanban from the project you joined so `whoami` can resolve your identity.
+
 ## Delivery (awareness)
 
 agkanban has no dedicated monitor. Notifications fired on transitions are delivered by
