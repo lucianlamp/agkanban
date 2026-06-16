@@ -86,6 +86,9 @@ SessionStart hook it sees its cards on start.
 - Run agkanban from the project you joined to the team — otherwise `whoami` can't resolve
   your identity (`agent unresolved`); pass `--team`, or join that project.
 - `--assignee` / `--reviewer` must match the exact agmsg agent names (`/agmsg team`).
+- For real task cards, put the target files/paths and acceptance criteria in `--body`. The
+  notification carries only the title, so without a body the assignee/reviewer can't tell
+  what to act on (they read it via `show`).
 - Single machine only — members on different machines do not share the board.
 
 ## Auto-pull (SessionStart hook, optional)

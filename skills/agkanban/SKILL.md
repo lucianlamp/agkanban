@@ -37,6 +37,11 @@ cards (doing/review)** (there is no separate `mine` command).
 perform the same column move + agmsg auto-notification as `move`. Use `move` only when
 you need to target an arbitrary column.
 
+**Write actionable cards.** The agmsg notification carries only the card *title*, so for a
+card that represents real work, put the target files/paths and acceptance criteria in
+`--body`. Without a body the assignee/reviewer cannot tell what to act on. Read it with
+`bash scripts/agkanban.sh show <id>`.
+
 Pass `--team <name>` on each command when you belong to multiple teams.
 
 In a team, `--assignee` / `--reviewer` are agmsg agent names (list them with `/agmsg team`),
