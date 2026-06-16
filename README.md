@@ -8,27 +8,40 @@ Built with bash + sqlite3 — no daemon, no network.
 
 ## Install
 
-Installs to the shared agents tree (`~/.agents/skills/`, next to agmsg) and symlinks it
-for every detected agent.
-
-**skills.sh (recommended)**:
+**skills.sh (recommended)** — target the agents you use with repeated `-a` (add `-a codex`
+etc. for others):
 
 ```bash
-npx --yes skills add lucianlamp/agkanban -g -y
+npx --yes skills add lucianlamp/agkanban -g -a claude-code -a codex -y
 ```
 
-> A trailing *"PromptScript does not support global skill installation"* line is
-> **harmless** — `PromptScript` is a project-only target, so only that one is skipped.
-> The install still completes: agkanban lands in `~/.agents/skills/agkanban` and is
-> symlinked for all other agents (see vercel-labs/skills#1352).
+> Always include **`-a claude-code`**: Claude Code only reads `~/.claude/skills` by default,
+> so it must be installed there (the `~/.claude/skills → ~/.agents/skills` symlink is
+> environment-specific, not standard). Each `-a <agent>` installs to that agent's own skills
+> dir. Add `--copy` to copy files instead of symlinking (more reliable on Windows, where
+> symlinks need privileges).
+>
+> A bare `npx skills add ... -g` (all detected agents) also works but may print a harmless
+> *"PromptScript does not support global skill installation"* line — `PromptScript` is a
+> project-only target and is simply skipped (see vercel-labs/skills#1352).
 
 **gh CLI (alternative)** — single agent, or a custom dir (`--dir` overrides
 `--agent`/`--scope`):
 
 ```bash
-gh skill install lucianlamp/agkanban agkanban --dir "$HOME/.agents/skills/agkanban"
-# or for one agent's own dir:
 gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
+# or into the shared tree next to agmsg:
+gh skill install lucianlamp/agkanban agkanban --dir "$HOME/.agents/skills/agkanban"
+```
+
+## Update
+
+```bash
+# skills.sh — update the installed skill to the latest version
+npx --yes skills update agkanban -g -y
+
+# gh CLI
+gh skill update
 ```
 
 > agkanban works best paired with agmsg. Install agmsg first and join your team.
