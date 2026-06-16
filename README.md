@@ -95,6 +95,9 @@ SessionStart hook it sees its cards on start.
 - For real task cards, put the target files/paths and acceptance criteria in `--body`. The
   notification carries only the title, so without a body the assignee/reviewer can't tell
   what to act on (they read it via `show`).
+- `delete` is **creator-only** and `edit` is **creator-or-assignee** — a cooperative guard
+  based on your agmsg identity (not cryptographic auth). Cards with no recorded creator are
+  editable/deletable by anyone (avoids lockout).
 - Single machine only — members on different machines do not share the board.
 
 ## Auto-pull (SessionStart hook, optional)

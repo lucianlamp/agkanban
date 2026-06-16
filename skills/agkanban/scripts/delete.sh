@@ -17,16 +17,24 @@ ensure_db
 agmsg_identity || true
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban delete: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
+me="${AGK_AGENT:-}"
+[ -z "$me" ] && { echo "agkanban delete: agent unresolved (join agmsg) — needed to verify you are the creator" >&2; exit 1; }
 t="$(sql_escape "$team")"
 
-# Delete the card; changes() reports whether it existed (same connection).
-changed="$(db_exec "DELETE FROM cards WHERE id=$num AND team='$t'; SELECT changes();")"
-if [ "$changed" = "0" ]; then
-  echo "agkanban delete: card-$num not found in team $team" >&2
+# Authorization: only the card's creator may delete it (cooperative guard, identity
+# from agmsg whoami). The 'Y' marker column distinguishes "no such card" from empty fields.
+got="$(db_exec "SELECT 'Y', COALESCE(creator,'') FROM cards WHERE id=$num AND team='$t';")"
+[ -z "$got" ] && { echo "agkanban delete: card-$num not found in team $team" >&2; exit 1; }
+IFS='|' read -r _ creator <<EOF
+$got
+EOF
+if [ -n "$creator" ] && [ "$creator" != "$me" ]; then
+  echo "agkanban delete: only the creator ($creator) can delete card-$num (you are $me)" >&2
   exit 1
 fi
 
-# Clean up the card's event log and clear any dangling dependency references.
-db_exec "DELETE FROM card_events WHERE card_id=$num AND team='$t';
+# Delete the card, its event log, and clear any dangling dependency references.
+db_exec "DELETE FROM cards WHERE id=$num AND team='$t';
+         DELETE FROM card_events WHERE card_id=$num AND team='$t';
          UPDATE cards SET blocked_by=NULL WHERE blocked_by=$num AND team='$t';"
 echo "card-$num deleted"

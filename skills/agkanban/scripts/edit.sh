@@ -28,7 +28,21 @@ ensure_db
 agmsg_identity || true
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban edit: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
+me="${AGK_AGENT:-}"
+[ -z "$me" ] && { echo "agkanban edit: agent unresolved (join agmsg) — needed to verify permission" >&2; exit 1; }
 t="$(sql_escape "$team")"
+
+# Authorization: the creator or the assignee may edit (cooperative guard, identity from
+# agmsg whoami). The 'Y' marker column distinguishes "no such card" from empty fields.
+got="$(db_exec "SELECT 'Y', COALESCE(creator,''), COALESCE(assignee,'') FROM cards WHERE id=$num AND team='$t';")"
+[ -z "$got" ] && { echo "agkanban edit: card-$num not found in team $team" >&2; exit 1; }
+IFS='|' read -r _ creator assignee <<EOF
+$got
+EOF
+if [ -n "$creator" ] && [ "$me" != "$creator" ] && [ "$me" != "$assignee" ]; then
+  echo "agkanban edit: only the creator ($creator) or assignee (${assignee:-none}) can edit card-$num (you are $me)" >&2
+  exit 1
+fi
 
 # Build the SET clause from only the fields that were passed.
 # An empty value clears the field (NULL) — except title, which must be non-empty.

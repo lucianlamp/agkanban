@@ -175,4 +175,26 @@ bash "$AGK" delete "$da" >/dev/null 2>&1; drc=$?
 set -e
 assert_eq "$drc" "1" "delete of missing card errors"
 
+# --- authorization: delete=creator only, edit=creator+assignee ---
+# created by alice (global AGK_AGENT), assigned to bob
+bash "$AGK" add "owned by alice" --assignee bob >/dev/null
+oid="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
+set +e
+out_del="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" delete "$oid" 2>&1)"; arc=$?
+set -e
+assert_eq "$arc" "1" "delete by non-creator is refused"
+assert_contains "$out_del" "only the creator" "delete refusal names the creator rule"
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$oid;")" "1" "refused delete leaves the card intact"
+# assignee bob may edit
+AGK_AGENT=bob AGK_TEAM=dev bash "$AGK" edit "$oid" --body "from assignee" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT body FROM cards WHERE id=$oid;")" "from assignee" "assignee may edit"
+# carol (neither creator nor assignee) may not edit
+set +e
+out_edit="$(AGK_AGENT=carol AGK_TEAM=dev bash "$AGK" edit "$oid" --body "hacked" 2>&1)"; erc2=$?
+set -e
+assert_eq "$erc2" "1" "edit by non-creator/non-assignee is refused"
+# creator alice may delete
+AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" delete "$oid" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$oid;")" "0" "creator may delete"
+
 finish
