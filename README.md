@@ -8,28 +8,28 @@ Built with bash + sqlite3 — no daemon, no network.
 
 ## Install
 
-Install it next to agmsg in the shared agents tree (`~/.agents/skills/`).
+Installs to the shared agents tree (`~/.agents/skills/`, next to agmsg) and symlinks it
+for every detected agent.
 
-**gh CLI (recommended)** — installs straight to the shared tree, no per-agent flags
-(`--dir` overrides `--agent`/`--scope`):
+**skills.sh (recommended)**:
+
+```bash
+npx --yes skills add lucianlamp/agkanban -g -y
+```
+
+> A trailing *"PromptScript does not support global skill installation"* line is
+> **harmless** — `PromptScript` is a project-only target, so only that one is skipped.
+> The install still completes: agkanban lands in `~/.agents/skills/agkanban` and is
+> symlinked for all other agents (see vercel-labs/skills#1352).
+
+**gh CLI (alternative)** — single agent, or a custom dir (`--dir` overrides
+`--agent`/`--scope`):
 
 ```bash
 gh skill install lucianlamp/agkanban agkanban --dir "$HOME/.agents/skills/agkanban"
+# or for one agent's own dir:
+gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
 ```
-
-**skills.sh** — target an agent whose **global path is `~/.agents/skills/`**
-(`cline` / `zed` / `warp` / `dexto` / `loaf` / `kimi-code-cli`):
-
-```bash
-npx --yes skills add lucianlamp/agkanban -g -a cline -y
-```
-
-> Avoid a bare `skills add -g` (all detected agents): if `PromptScript` is present it
-> aborts with *"PromptScript does not support global skill installation"* — it is a
-> project-only target and the `skills` CLI currently aborts instead of skipping it
-> ([vercel-labs/skills#1352](https://github.com/vercel-labs/skills/issues/1352)). For
-> a single coding agent's own dir use `-a claude-code` (→ `~/.claude/skills`) or
-> `-a codex`; for the shared tree use the `gh --dir` form above.
 
 > agkanban works best paired with agmsg. Install agmsg first and join your team.
 > Board operations work without agmsg, but notifications are skipped.
