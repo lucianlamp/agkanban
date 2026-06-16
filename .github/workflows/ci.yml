@@ -25,3 +25,37 @@ jobs:
 
       - name: Run test suite
         run: bash tests/test_transitions.sh
+
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install sqlite3
+        run: choco install sqlite -y --no-progress
+
+      - name: Verify sqlite3 from Git Bash
+        shell: bash
+        run: |
+          command -v sqlite3
+          sqlite3 --version
+
+      - name: Syntax check (Git Bash)
+        shell: bash
+        run: |
+          set -e
+          for f in skills/agkanban/scripts/*.sh \
+                   skills/agkanban/scripts/lib/*.sh \
+                   skills/agkanban/hooks/*.sh \
+                   tests/*.sh; do
+            echo "checking $f"
+            bash -n "$f"
+          done
+
+      - name: Run Bash test suite under Git Bash
+        shell: bash
+        run: bash tests/test_transitions.sh
+
+      - name: Run PowerShell launcher smoke
+        shell: pwsh
+        run: ./tests/test_windows_launcher.ps1

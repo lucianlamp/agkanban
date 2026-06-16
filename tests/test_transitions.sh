@@ -201,7 +201,7 @@ assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$oid;"
 # --- Windows PowerShell shim: --argv-file base64 handoff (UTF-8 safe) ---
 argvf="$TMP/argv.txt"; : > "$argvf"
 for a in "add" "日本語カード" "--assignee" "bob"; do
-  printf '%s\n' "$(printf '%s' "$a" | base64)" >> "$argvf"
+  printf '%s\r\n' "$(printf '%s' "$a" | base64)" >> "$argvf"
 done
 out_argv="$(AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" --argv-file "$argvf")"
 assert_contains "$out_argv" "added to dev" "--argv-file decodes and dispatches"

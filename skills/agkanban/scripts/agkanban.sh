@@ -9,6 +9,7 @@ if [ "${1:-}" = "--argv-file" ]; then
   argv_file="${2:?--argv-file needs a path}"; shift 2
   decoded=()
   while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
     [ -z "$line" ] && continue
     decoded+=("$(printf '%s' "$line" | base64 -d)")
   done < "$argv_file"
