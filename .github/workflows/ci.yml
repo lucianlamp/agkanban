@@ -24,4 +24,4 @@ jobs:
           done
 
       - name: Run test suite
-        run: bash skills/agkanban/tests/test_transitions.sh
+        run: bash tests/test_transitions.sh

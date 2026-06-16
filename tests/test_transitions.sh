@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/.." && pwd)"
+# tests/ lives at the repo root; the skill itself is under skills/agkanban/.
+ROOT="$(cd "$HERE/../skills/agkanban" && pwd)"
 source "$HERE/lib_assert.sh"
 
 # --- Isolated environment ---

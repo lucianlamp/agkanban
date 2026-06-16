@@ -143,7 +143,7 @@ agent-type selection, and SessionStart hooks on Windows.
 ## Test
 
 ```bash
-bash skills/agkanban/tests/test_transitions.sh
+bash tests/test_transitions.sh
 ```
 
 ## Repo layout
