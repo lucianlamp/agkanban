@@ -2,7 +2,8 @@
   Installs an `agkanban` PowerShell profile function that delegates to agkanban.ps1.
   Mirrors agmsg's install-agmsg.ps1 (fujibee/agmsg PR #128).
 
-  NOTE: authored on macOS; test on Windows before relying on it.
+  This updates only a managed profile block. It does not create top-level files under
+  ~/.agents and does not reimplement any agkanban logic in PowerShell.
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(

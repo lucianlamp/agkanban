@@ -6,15 +6,15 @@ dispatcher (`scripts/agkanban.sh`) over a UTF-8-safe base64 argv file. This mirr
 [agmsg's Windows support](https://github.com/fujibee/agmsg/pull/128) — no logic is
 reimplemented in PowerShell.
 
-> Status: the PowerShell pieces (`scripts/windows/*.ps1`) were authored on macOS and
-> still need to be exercised on Windows (PowerShell parser check + a Git Bash E2E).
-
 ## Requirements
 
 - **Git for Windows** (provides `bash.exe` and `cygpath`). If it is not on a standard
   path, set `GIT_BASH` (or `AGKANBAN_BASH`) to its `bash.exe`.
 - **sqlite3** available from Git Bash (`command -v sqlite3` must succeed in Git Bash).
 - **agmsg** installed and the project joined to a team (agkanban borrows identity from it).
+
+The repository pins shell scripts to LF line endings so a Windows checkout can run them
+from Git Bash without `set: invalid option` / `$'\r'` failures.
 
 ## Run it
 

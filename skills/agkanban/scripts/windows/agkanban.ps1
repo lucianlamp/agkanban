@@ -10,8 +10,8 @@
     - $env:AGK_TYPE          -> agent type for whoami (AGKANBAN_AGENT_TYPE, default 'codex')
     - $env:AGKANBAN_PROJECT  -> the current directory as a Git Bash path (project key)
 
-  NOTE: This file has only been authored on macOS and MUST be tested on Windows
-  (PowerShell parser check + Git Bash E2E) before relying on it.
+  Verified on Windows with PowerShell + Git Bash. Keep this file as a launcher only:
+  board logic, notifications, and SQLite access stay in scripts/*.sh.
 #>
 [CmdletBinding()]
 param(
@@ -84,10 +84,28 @@ function ConvertTo-BashPath {
 }
 
 function Test-SqliteAvailable {
-    & $script:Bash -lc 'command -v sqlite3 >/dev/null 2>&1 && sqlite3 --version >/dev/null'
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error 'sqlite3 is required and must be executable from Git Bash. Install sqlite3 or add it to the Git Bash PATH.'
-        exit 127
+    Invoke-WithPythonUtf8 {
+        & $script:Bash -lc 'command -v sqlite3 >/dev/null 2>&1 && sqlite3 --version >/dev/null'
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error 'sqlite3 is required and must be executable from Git Bash. Install sqlite3 or add it to the Git Bash PATH.'
+            exit 127
+        }
+    }
+}
+
+function Invoke-WithPythonUtf8 {
+    param([scriptblock] $Block)
+
+    $oldPythonIoEncoding = $env:PYTHONIOENCODING
+    try {
+        $env:PYTHONIOENCODING = 'utf-8'
+        & $Block
+    } finally {
+        if ($null -eq $oldPythonIoEncoding) {
+            Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue
+        } else {
+            $env:PYTHONIOENCODING = $oldPythonIoEncoding
+        }
     }
 }
 
@@ -115,9 +133,11 @@ try {
     }
     [System.IO.File]::WriteAllLines($argvFile, [string[]] $encodedArgs, $utf8NoBom)
 
-    & $script:Bash $dispatcher '--argv-file' (ConvertTo-BashPath $argvFile)
-    $code = $LASTEXITCODE
-    if ($code -ne 0) { exit $code }
+    Invoke-WithPythonUtf8 {
+        & $script:Bash $dispatcher '--argv-file' (ConvertTo-BashPath $argvFile)
+        $code = $LASTEXITCODE
+        if ($code -ne 0) { exit $code }
+    }
 } finally {
     Remove-Item -LiteralPath $argvFile -Force -ErrorAction SilentlyContinue
 }

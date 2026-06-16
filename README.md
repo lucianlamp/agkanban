@@ -151,8 +151,6 @@ UTF-8-safe base64 argv file — no logic is reimplemented in PowerShell (mirrors
 [`docs/windows.md`](docs/windows.md) for setup, the optional `agkanban` profile function,
 agent-type selection, and SessionStart hooks on Windows.
 
-> The PowerShell pieces were authored on macOS and still need verification on Windows.
-
 ## Test
 
 ```bash
