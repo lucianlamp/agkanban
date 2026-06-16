@@ -19,9 +19,25 @@ team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$me" ] && { echo "agkanban mine: agent unresolved (join agmsg)" >&2; exit 1; }
 [ -z "$team" ] && { echo "agkanban mine: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 
-echo "# mine: $me @ $team (open: todo/doing/review)"
-db_exec "SELECT 'card-'||id||'  ['||col||']  '||title
+rows="$(db_exec "SELECT 'card-'||id||'  ['||col||']  '||title
          FROM cards
          WHERE team='$(sql_escape "$team")' AND assignee='$(sql_escape "$me")'
            AND col IN ('todo','doing','review')
-         ORDER BY CASE col WHEN 'doing' THEN 0 WHEN 'review' THEN 1 ELSE 2 END, id;"
+         ORDER BY CASE col WHEN 'doing' THEN 0 WHEN 'review' THEN 1 ELSE 2 END, id;")"
+
+echo "# mine: $me @ $team (open: todo/doing/review)"
+if [ -z "$rows" ]; then
+  echo "(no open cards)"
+  exit 0
+fi
+printf '%s\n' "$rows"
+
+# Call to action: this is a prompt to work the cards, not just report them.
+cat <<'EOF'
+
+→ ACT ON THESE NOW — do not just list or summarize them. For each card:
+  - read details first:  bash scripts/agkanban.sh show <id>
+  - [todo]   claim it, then do the work:   bash scripts/agkanban.sh claim <id>
+  - [doing]  keep going; when ready:        bash scripts/agkanban.sh review <id>
+  - [review] perform the review, then:      bash scripts/agkanban.sh done <id>   (or report a blocker to the requester via agmsg)
+EOF

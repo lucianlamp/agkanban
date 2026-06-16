@@ -42,6 +42,10 @@ bash scripts/agkanban.sh board          # full board
 
 > Running `agkanban` with no arguments is the only way to see your assigned cards. There is no separate `mine` command.
 
+> The no-args output (and the SessionStart hook) is a **call to act**, not just a status
+> list: it instructs the agent to work each card (read `show`, `claim` a todo, do the work,
+> move to `review`/`done`, or report blockers). Agents proceed instead of only reporting.
+
 ## How it works
 
 - **State**: `db/board.db` (per team). Override with `AGKANBAN_STORAGE_PATH`.

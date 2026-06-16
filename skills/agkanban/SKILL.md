@@ -21,6 +21,13 @@ preserve the execute bit, so call it through `bash`). **No arguments shows your 
 cards — todo/doing/review assigned to you (everything but done)** (there is no separate
 `mine` command).
 
+**Viewing your cards is a call to act, not just to report** (like agmsg's "read and
+respond"). When you run `agkanban` with no args — or when the SessionStart hook surfaces
+your cards — work them: for each card read `show <id>` for the `--body` (target files +
+acceptance criteria), then `claim` a todo and do the work, move `doing → review` when
+ready, and as reviewer do the review and `done` it (or report a blocker to the requester
+via agmsg). Do not stop at listing or summarizing them.
+
 | Command | Action |
 |---|---|
 | `scripts/agkanban.sh` | Your open cards (todo/doing/review assigned to you) |
