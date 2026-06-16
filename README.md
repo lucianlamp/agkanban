@@ -25,15 +25,17 @@ gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
 
 ## Quick start
 
+Invoke through `bash` (skill installers don't preserve the execute bit):
+
 ```bash
-scripts/agkanban.sh add "design API" --assignee codex --reviewer claude
-scripts/agkanban.sh claim 1        # claim (doing, assign to self)
-scripts/agkanban.sh review 1       # request review (auto-notifies reviewer)
-scripts/agkanban.sh done 1         # mark done
-scripts/agkanban.sh reopen 1       # reopen (back to todo)
-scripts/agkanban.sh move 1 doing   # generic: move to any column (fallback for the above verbs)
-scripts/agkanban.sh                # no args = your assigned cards (doing/review)
-scripts/agkanban.sh board          # full board
+bash scripts/agkanban.sh add "design API" --assignee codex --reviewer claude
+bash scripts/agkanban.sh claim 1        # claim (doing, assign to self)
+bash scripts/agkanban.sh review 1       # request review (auto-notifies reviewer)
+bash scripts/agkanban.sh done 1         # mark done
+bash scripts/agkanban.sh reopen 1       # reopen (back to todo)
+bash scripts/agkanban.sh move 1 doing   # generic: move to any column (fallback for the above verbs)
+bash scripts/agkanban.sh                # no args = your assigned cards (doing/review)
+bash scripts/agkanban.sh board          # full board
 ```
 
 > Use `claim`/`review`/`done`/`reopen` for intent-specific transitions; they all do column move + agmsg notification internally. Use `move <id> <col>` for arbitrary transitions.
@@ -68,11 +70,11 @@ agmsg, so each member runs agkanban **from the project it joined** (that is wher
 **Workflow (leader → members):**
 
 ```bash
-/agmsg team                                       # list member agent names
-scripts/agkanban.sh add "implement X" --assignee codex --reviewer claude
-scripts/agkanban.sh claim 1     # a member starts it (doing, assigned to self)
-scripts/agkanban.sh review 1    # notifies the reviewer via agmsg
-scripts/agkanban.sh done 1      # notifies creator / assignee
+/agmsg team                                            # list member agent names
+bash scripts/agkanban.sh add "implement X" --assignee codex --reviewer claude
+bash scripts/agkanban.sh claim 1     # a member starts it (doing, assigned to self)
+bash scripts/agkanban.sh review 1    # notifies the reviewer via agmsg
+bash scripts/agkanban.sh done 1      # notifies creator / assignee
 ```
 
 The board is per team, so all members share it. Members notice work via agmsg
@@ -115,7 +117,7 @@ bash skills/agkanban/tests/test_transitions.sh
 The installable skill lives under `skills/agkanban/` (matches `skills/*/SKILL.md`,
 which both `skills.sh` and `gh skill install` discover). Once installed it lands at
 `~/.agents/skills/agkanban/`, where the Quick start commands above are run as
-`scripts/agkanban.sh …` from within the skill directory.
+`bash scripts/agkanban.sh …` from within the skill directory.
 
 ## License
 

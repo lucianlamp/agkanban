@@ -16,7 +16,9 @@ Identity (team/agent) is borrowed from agmsg.
 
 ## Usage
 
-All commands run as `scripts/agkanban.sh <subcommand>`. **No arguments shows your assigned cards (doing/review)** (there is no separate `mine` command).
+Invoke every command as `bash scripts/agkanban.sh <subcommand>` (skill installers do not
+preserve the execute bit, so call it through `bash`). **No arguments shows your assigned
+cards (doing/review)** (there is no separate `mine` command).
 
 | Command | Action |
 |---|---|
