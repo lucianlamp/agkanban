@@ -34,7 +34,7 @@ bash scripts/agkanban.sh review 1       # request review (auto-notifies reviewer
 bash scripts/agkanban.sh done 1         # mark done
 bash scripts/agkanban.sh reopen 1       # reopen (back to todo)
 bash scripts/agkanban.sh move 1 doing   # generic: move to any column (fallback for the above verbs)
-bash scripts/agkanban.sh                # no args = your assigned cards (doing/review)
+bash scripts/agkanban.sh                # no args = your open cards (todo/doing/review)
 bash scripts/agkanban.sh board          # full board
 ```
 

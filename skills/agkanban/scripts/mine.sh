@@ -19,9 +19,9 @@ team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$me" ] && { echo "agkanban mine: agent unresolved (join agmsg)" >&2; exit 1; }
 [ -z "$team" ] && { echo "agkanban mine: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 
-echo "# mine: $me @ $team (doing/review)"
+echo "# mine: $me @ $team (open: todo/doing/review)"
 db_exec "SELECT 'card-'||id||'  ['||col||']  '||title
          FROM cards
          WHERE team='$(sql_escape "$team")' AND assignee='$(sql_escape "$me")'
-           AND col IN ('doing','review')
-         ORDER BY col, id;"
+           AND col IN ('todo','doing','review')
+         ORDER BY CASE col WHEN 'doing' THEN 0 WHEN 'review' THEN 1 ELSE 2 END, id;"

@@ -17,12 +17,13 @@ Identity (team/agent) is borrowed from agmsg.
 ## Usage
 
 Invoke every command as `bash scripts/agkanban.sh <subcommand>` (skill installers do not
-preserve the execute bit, so call it through `bash`). **No arguments shows your assigned
-cards (doing/review)** (there is no separate `mine` command).
+preserve the execute bit, so call it through `bash`). **No arguments shows your open
+cards — todo/doing/review assigned to you (everything but done)** (there is no separate
+`mine` command).
 
 | Command | Action |
 |---|---|
-| `scripts/agkanban.sh` | Your assigned cards (doing/review) |
+| `scripts/agkanban.sh` | Your open cards (todo/doing/review assigned to you) |
 | `scripts/agkanban.sh board` | Full team board |
 | `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
 | `scripts/agkanban.sh claim <id>` | Claim (doing, assign to self, atomic) |

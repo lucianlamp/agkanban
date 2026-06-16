@@ -142,4 +142,8 @@ assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "d
 bash "$AGK" reopen "$vid" >/dev/null
 assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "todo" "reopen verb -> todo column"
 
+# --- mine includes todo cards assigned to me (card-$vid is now todo, assignee=bob) ---
+mine_todo="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
+assert_contains "$mine_todo" "card-$vid" "no-arg (mine) includes my todo cards"
+
 finish
