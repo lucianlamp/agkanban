@@ -44,6 +44,12 @@ npx --yes skills update agkanban -g -y
 gh skill update
 ```
 
+> On **Windows**, `skills update` can report *"Failed to update"* if the install uses
+> symlinks (creating symlinks needs Developer Mode / admin). Refresh with a copy-based
+> re-install instead — `npx --yes skills add lucianlamp/agkanban -g -a claude-code -a codex --copy -y`
+> — or `gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user --force`
+> (gh copies files). Updates from a **private** repo also fail (`Failed to fetch tree`); the repo must be public.
+
 > agkanban works best paired with agmsg. Install agmsg first and join your team.
 > Board operations work without agmsg, but notifications are skipped.
 
