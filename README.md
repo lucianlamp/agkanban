@@ -8,13 +8,18 @@ Built with bash + sqlite3 — no daemon, no network.
 
 ## Install
 
-**skills.sh (recommended)** — installs globally to `~/.agents/skills`:
+**skills.sh** — global install, **targeting a specific agent** with `-a`:
 
 ```bash
-npx --yes skills add lucianlamp/agkanban -g -y
+npx --yes skills add lucianlamp/agkanban -g -a claude-code -y   # or: -a codex
 ```
 
-**gh CLI (alternative, preview)**:
+> Pass `-a <agent>`. A bare `-g` (all detected agents) can abort with
+> *"PromptScript does not support global skill installation"* — `PromptScript` is a
+> project-only target, and the `skills` CLI currently aborts instead of skipping it
+> ([vercel-labs/skills#1352](https://github.com/vercel-labs/skills/issues/1352)).
+
+**gh CLI (alternative, preview)** — robust, picks one agent explicitly:
 
 ```bash
 gh skill install lucianlamp/agkanban agkanban --agent claude-code --scope user
