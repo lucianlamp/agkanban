@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lucianlamp/agkanban/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianlamp/agkanban/actions/workflows/ci.yml)
 
-Multi-agent kanban task board that pairs with **agmsg**. State lives in a
+Multi-agent kanban task board that pairs with **[agmsg](https://github.com/fujibee/agmsg)**. State lives in a
 per-team SQLite board; moving a card auto-notifies teammates through agmsg (event-driven).
 Built with bash + sqlite3 — no daemon, no network.
 
