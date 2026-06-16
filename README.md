@@ -80,7 +80,9 @@ bash scripts/agkanban.sh board          # full board
 
 ## How it works
 
-- **State**: `db/board.db` (per team). Override with `AGKANBAN_STORAGE_PATH`.
+- **State**: `~/.agkanban/board.db` (per team), kept outside the skill dir so reinstalling
+  /updating the skill never wipes your cards. Override with `AGKANBAN_STORAGE_PATH`. A board
+  from the old in-skill `<skill>/db` location is auto-migrated on first run.
 - **Identity**: borrows team/agent from agmsg's `whoami.sh` (searches `AGMSG_HOME`, sibling directory, `~/.agents/skills/agmsg`).
 - **Notifications**: fires agmsg's `send.sh` on column transitions (swappable via `AGMSG_SEND_CMD` for testing).
 - **Delivery**: piggybacks on agmsg's turn/monitor/hook. agkanban has no dedicated monitor.
