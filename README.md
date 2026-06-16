@@ -150,6 +150,34 @@ don't use agkanban.
 }
 ```
 
+## Sandbox
+
+agkanban writes **outside the project**: the board at `~/.agkanban/`, and (when a
+transition fires a notification) agmsg's store at `~/.agents/skills/agmsg/`. Under a
+sandbox that only permits workspace writes, declare these as writable roots or
+`add`/`claim`/`move`/notify will fail.
+
+**Claude Code** (`~/.claude/settings.json`):
+
+```json
+"sandbox": {
+  "filesystem": {
+    "allowWrite": ["~/.agkanban/", "~/.agents/skills/agmsg/"]
+  }
+}
+```
+
+**Codex** — run `workspace-write` and add the data dirs (repeat `--add-dir`):
+
+```bash
+codex --sandbox workspace-write \
+  --add-dir "$HOME/.agkanban" --add-dir "$HOME/.agents/skills/agmsg"
+```
+
+Or use `--sandbox danger-full-access` (or set the equivalent writable roots in
+`~/.codex/config.toml`). A `read-only` sandbox cannot run agkanban's write commands.
+Reads of the skill and agmsg scripts under `~/.agents/skills/` must also be permitted.
+
 ## Windows
 
 agkanban runs on Windows through **Git Bash**, with a thin PowerShell launcher
