@@ -40,6 +40,8 @@ via agmsg). Do not stop at listing or summarizing them.
 | `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
 | `scripts/agkanban.sh show <id>` | Card detail + event history |
 | `scripts/agkanban.sh block <id> --by <id2>` | Set dependency |
+| `scripts/agkanban.sh edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."]` | Edit card fields (empty value clears; title can't be empty) |
+| `scripts/agkanban.sh delete <id>` | Permanently delete a card (alias `rm`); also clears dangling `blocked_by` |
 
 `claim`/`review`/`done`/`reopen` are intent-specific transition verbs; internally they
 perform the same column move + agmsg auto-notification as `move`. Use `move` only when

@@ -15,6 +15,8 @@ case "$sub" in
   claim)  exec bash "$DIR/claim.sh" "$@" ;;
   show)   exec bash "$DIR/show.sh" "$@" ;;
   block)  exec bash "$DIR/block.sh" "$@" ;;
+  edit)   exec bash "$DIR/edit.sh" "$@" ;;
+  delete|rm) exec bash "$DIR/delete.sh" "$@" ;;
   # Semantic transition verbs (thin wrappers over move <id> <col>). Append column name and delegate to move.
   review) exec bash "$DIR/move.sh" "$@" review ;;
   done)   exec bash "$DIR/move.sh" "$@" done ;;
@@ -27,7 +29,7 @@ case "$sub" in
   -h|--help|help)
     cat <<'USAGE'
 agkanban — kanban task management paired with agmsg
-  agkanban                       your assigned cards (doing/review)
+  agkanban                       your open cards (todo/doing/review)
   agkanban board                 full team board
   agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."] [--team T]
   agkanban claim <id> [--team T]    claim (doing, assign to self)
@@ -37,6 +39,8 @@ agkanban — kanban task management paired with agmsg
   agkanban move <id> <todo|doing|review|done> [--team T]   generic (any column)
   agkanban show <id> [--team T]
   agkanban block <id> --by <id2> [--team T]
+  agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."] [--team T]
+  agkanban delete <id> [--team T]  permanently delete a card (alias: rm)
 USAGE
     ;;
   *) echo "agkanban: unknown subcommand: $sub" >&2; exit 2 ;;

@@ -146,4 +146,33 @@ assert_eq "$(sqlite3 "$TMP/board.db" "SELECT col FROM cards WHERE id=$vid;")" "t
 mine_todo="$(AGK_AGENT=bob AGK_TEAM=dev bash "$AGK")"
 assert_contains "$mine_todo" "card-$vid" "no-arg (mine) includes my todo cards"
 
+# --- edit: update fields ---
+bash "$AGK" add "orig title" --assignee bob >/dev/null
+eid="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
+bash "$AGK" edit "$eid" --title "new title" --reviewer carol --body "do the thing" >/dev/null
+erow="$(sqlite3 "$TMP/board.db" "SELECT title||'|'||COALESCE(reviewer,'')||'|'||COALESCE(body,'') FROM cards WHERE id=$eid;")"
+assert_eq "$erow" "new title|carol|do the thing" "edit updates title/reviewer/body"
+bash "$AGK" edit "$eid" --reviewer "" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT COALESCE(reviewer,'NULL') FROM cards WHERE id=$eid;")" "NULL" "edit with empty value clears the field"
+set +e
+bash "$AGK" edit "$eid" >/dev/null 2>&1; nrc=$?
+set -e
+assert_eq "$nrc" "2" "edit with no fields errors"
+
+# --- delete: removes the card, its events, and clears dangling dependencies ---
+bash "$AGK" add "blocker X" >/dev/null
+da="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
+bash "$AGK" add "waiter X" >/dev/null
+dw="$(sqlite3 "$TMP/board.db" "SELECT max(id) FROM cards;")"
+bash "$AGK" block "$dw" --by "$da" >/dev/null
+bash "$AGK" move "$da" doing >/dev/null   # create an event row for da
+bash "$AGK" delete "$da" >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$da;")" "0" "delete removes the card"
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM card_events WHERE card_id=$da;")" "0" "delete removes the card's events"
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT COALESCE(blocked_by,'NULL') FROM cards WHERE id=$dw;")" "NULL" "delete clears dangling blocked_by"
+set +e
+bash "$AGK" delete "$da" >/dev/null 2>&1; drc=$?
+set -e
+assert_eq "$drc" "1" "delete of missing card errors"
+
 finish
