@@ -5,8 +5,8 @@ description: Use when coordinating multi-agent tasks across Claude Code / Codex 
 
 # agkanban
 
-Kanban-style task state management designed to pair with agmsg. State is persisted in a
-per-team `board.db`; card column transitions auto-notify stakeholders via agmsg.
+Kanban-style task state management designed to pair with agmsg. State is persisted in
+`~/.agkanban/board.db`; card column transitions auto-notify stakeholders via agmsg.
 Identity (team/agent) is borrowed from agmsg.
 
 ## Prerequisites

@@ -11,7 +11,7 @@ agkanban_storage_dir() {
     printf '%s' "${AGKANBAN_STORAGE_PATH%/}"
     return
   fi
-  printf '%s/.agkanban' "$HOME"
+  printf '%s/.agkanban' "${HOME:?HOME is required}"
 }
 
 agkanban_db() { printf '%s/board.db' "$(agkanban_storage_dir)"; }
