@@ -53,6 +53,13 @@ gh skill update
 > agkanban works best paired with agmsg. Install agmsg first and join your team.
 > Board operations work without agmsg, but notifications are skipped.
 
+If you run Codex with the `workspace-write` sandbox, run the setup helper once so Codex
+can write agkanban's board and agmsg's local store:
+
+```bash
+bash ~/.agents/skills/agkanban/scripts/setup-codex-sandbox.sh
+```
+
 ## Quick start
 
 On Windows / PowerShell / Codex, invoke the installed PowerShell profile function from the
@@ -187,16 +194,31 @@ codex --sandbox workspace-write \
   --add-dir "$HOME/.agkanban" --add-dir "$HOME/.agents/skills/agmsg"
 ```
 
-Persistent equivalent in `~/.codex/config.toml`:
+Persistent equivalent in `~/.codex/config.toml` can be installed with:
+
+```bash
+bash ~/.agents/skills/agkanban/scripts/setup-codex-sandbox.sh
+```
+
+The helper expands paths to absolute paths, creates `~/.agkanban`, backs up an existing
+config to `~/.codex/config.toml.bak`, and updates the `writable_roots` list idempotently.
+It writes the equivalent of:
 
 ```toml
 [sandbox_workspace_write]
-writable_roots = ["~/.agkanban", "~/.agents/skills/agmsg"]
+writable_roots = [
+  "/Users/you/.agkanban",
+  "/Users/you/.agents/skills/agmsg",
+]
 ```
+
+Use `setup-codex-sandbox.sh --check` to verify the config without writing, or `--print`
+to print the TOML block.
 
 Or use `--sandbox danger-full-access`. A `read-only` sandbox cannot run agkanban's write
 commands. (Verified: under `workspace-write` without these roots, `agkanban add` fails with
-*"unable to open database file"*; adding the storage root fixes it.)
+*"attempt to write a readonly database"* or *"unable to open database file"*; adding the
+storage roots fixes it.)
 
 ## Windows
 

@@ -16,6 +16,46 @@ agmsg_home() {
   return 1
 }
 
+agmsg_session_id() {
+  if [ -n "${AGK_SESSION_ID:-}" ]; then
+    printf '%s' "$AGK_SESSION_ID"
+  elif [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+    printf '%s' "$CLAUDE_CODE_SESSION_ID"
+  elif [ -n "${CODEX_THREAD_ID:-}" ]; then
+    printf '%s' "$CODEX_THREAD_ID"
+  fi
+}
+
+agmsg_identity_from_actas_lock() { # agmsg_home project type
+  local home="$1" project="$2" type="$3"
+  local sid lock_lib selected_team selected_agent team agent state
+  sid="$(agmsg_session_id)"
+  [ -n "$sid" ] || return 1
+  [ -x "$home/scripts/identities.sh" ] || return 1
+  lock_lib="$home/scripts/lib/actas-lock.sh"
+  [ -f "$lock_lib" ] || return 1
+
+  local SKILL_DIR="$home"
+  # shellcheck disable=SC1090
+  source "$lock_lib"
+
+  while IFS=$'\t' read -r team agent; do
+    [ -n "$team" ] || continue
+    state="$(actas_lock_state "$team" "$agent" "$sid" 2>/dev/null || true)"
+    [ "$state" = "mine" ] || continue
+    if [ -n "${selected_agent:-}" ]; then
+      return 1
+    fi
+    selected_team="$team"
+    selected_agent="$agent"
+  done < <(bash "$home/scripts/identities.sh" "$project" "$type" 2>/dev/null)
+
+  [ -n "${selected_agent:-}" ] || return 1
+  AGK_AGENT="$selected_agent"
+  AGK_TEAM="$selected_team"
+  return 0
+}
+
 # Identity resolution. On success, sets AGK_AGENT / AGK_TEAM and returns 0.
 # - If AGK_AGENT/AGK_TEAM are already set in env, skips whoami (test/override seam).
 # - Uses AGK_TYPE for agent type if set; otherwise omits it and lets whoami
@@ -23,11 +63,18 @@ agmsg_home() {
 #   This allows the same script/hook to work correctly for both agents.
 agmsg_identity() {
   if [ -n "${AGK_AGENT:-}" ] && [ -n "${AGK_TEAM:-}" ]; then return 0; fi
-  local home out
+  local home out project type
   home="$(agmsg_home)" || return 1
-  out="$(bash "$home/scripts/whoami.sh" "${AGKANBAN_PROJECT:-$(pwd)}" ${AGK_TYPE:+"$AGK_TYPE"} 2>/dev/null)" || return 1
+  project="${AGKANBAN_PROJECT:-$(pwd)}"
+  out="$(bash "$home/scripts/whoami.sh" "$project" ${AGK_TYPE:+"$AGK_TYPE"} 2>/dev/null)" || return 1
   AGK_AGENT="$(printf '%s\n' "$out" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')"
   AGK_TEAM="$(printf '%s\n' "$out" | sed -n 's/.*teams=\([^, ]*\).*/\1/p')"
+  if [ -n "$AGK_AGENT" ] && [ -n "$AGK_TEAM" ]; then return 0; fi
+  type="$(printf '%s\n' "$out" | sed -n 's/.*type=\([^ ]*\).*/\1/p')"
+  [ -n "$type" ] || type="${AGK_TYPE:-}"
+  if [ -n "$type" ] && agmsg_identity_from_actas_lock "$home" "$project" "$type"; then
+    return 0
+  fi
   [ -n "$AGK_AGENT" ] && [ -n "$AGK_TEAM" ]
 }
 
