@@ -16,10 +16,21 @@ Identity (team/agent) is borrowed from agmsg.
 
 ## Usage
 
-Invoke every command as `bash scripts/agkanban.sh <subcommand>` (skill installers do not
-preserve the execute bit, so call it through `bash`). **No arguments shows your open
-cards — todo/doing/review assigned to you (everything but done)** (there is no separate
-`mine` command).
+Use the platform entrypoint for the current session:
+
+- **Windows / PowerShell / Codex:** run `agkanban <subcommand>` from the project directory.
+  This is a PowerShell profile function that delegates to
+  `~/.agents/skills/agkanban/scripts/windows/agkanban.ps1`, which then uses Git Bash.
+  Do not call WSL `bash`, and do not call `bash scripts/agkanban.sh` from the project root.
+  If the `agkanban` function is missing, use the explicit launcher:
+  `& "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1" <subcommand>`.
+- **Unix / Git Bash:** run
+  `bash "$HOME/.agents/skills/agkanban/scripts/agkanban.sh" <subcommand>` (or
+  `bash scripts/agkanban.sh <subcommand>` only when your working directory is the
+  installed skill directory).
+
+**No arguments shows your open cards — todo/doing/review assigned to you (everything but
+done)** (there is no separate `mine` command).
 
 **Viewing your cards is a call to act, not just to report** (like agmsg's "read and
 respond"). When you run `agkanban` with no args — or when the SessionStart hook surfaces
@@ -32,18 +43,18 @@ summarizing them.
 
 | Command | Action |
 |---|---|
-| `scripts/agkanban.sh` | Your open cards (todo/doing/review assigned to you) |
-| `scripts/agkanban.sh board` | Full team board |
-| `scripts/agkanban.sh add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
-| `scripts/agkanban.sh claim <id>` | Claim (doing, assign to self, atomic) |
-| `scripts/agkanban.sh review <id>` | Request review (move to review) |
-| `scripts/agkanban.sh done <id>` | Mark done |
-| `scripts/agkanban.sh reopen <id>` | Reopen (back to todo) |
-| `scripts/agkanban.sh move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
-| `scripts/agkanban.sh show <id>` | Card detail + event history |
-| `scripts/agkanban.sh block <id> --by <id2>` | Set dependency |
-| `scripts/agkanban.sh edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."]` | Edit card fields — **creator or assignee only** (empty value clears; title can't be empty) |
-| `scripts/agkanban.sh delete <id>` | Permanently delete a card (alias `rm`) — **creator only**; also clears dangling `blocked_by` |
+| `agkanban` | Your open cards (todo/doing/review assigned to you) |
+| `agkanban board` | Full team board |
+| `agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
+| `agkanban claim <id>` | Claim (doing, assign to self, atomic) |
+| `agkanban review <id>` | Request review (move to review) |
+| `agkanban done <id>` | Mark done |
+| `agkanban reopen <id>` | Reopen (back to todo) |
+| `agkanban move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
+| `agkanban show <id>` | Card detail + event history |
+| `agkanban block <id> --by <id2>` | Set dependency |
+| `agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."]` | Edit card fields — **creator or assignee only** (empty value clears; title can't be empty) |
+| `agkanban delete <id>` | Permanently delete a card (alias `rm`) — **creator only**; also clears dangling `blocked_by` |
 
 `claim`/`review`/`done`/`reopen` are intent-specific transition verbs; internally they
 perform the same column move + agmsg auto-notification as `move`. Use `move` only when
@@ -52,7 +63,7 @@ you need to target an arbitrary column.
 **Write actionable cards.** The agmsg notification carries only the card *title*, so for a
 card that represents real work, put the target files/paths and acceptance criteria in
 `--body`. Without a body the assignee/reviewer cannot tell what to act on. Read it with
-`bash scripts/agkanban.sh show <id>`.
+`agkanban show <id>` on Windows/PowerShell, or with the Bash entrypoint on Unix/Git Bash.
 
 Pass `--team <name>` on each command when you belong to multiple teams.
 
