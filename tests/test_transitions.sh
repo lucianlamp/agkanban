@@ -8,6 +8,12 @@ source "$HERE/lib_assert.sh"
 # --- Isolated environment ---
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
+DEFAULT_HOME="$TMP/default-home"
+mkdir -p "$DEFAULT_HOME"
+default_storage="$(env -u AGKANBAN_STORAGE_PATH HOME="$DEFAULT_HOME" bash -c 'source "$1"; agkanban_storage_dir' _ "$ROOT/scripts/lib/storage.sh")"
+assert_eq "$default_storage" "$DEFAULT_HOME/.agkanban" "default storage lives under HOME/.agkanban"
+
 export AGKANBAN_STORAGE_PATH="$TMP"
 export AGK_TEST_SENT="$TMP/sent.log"
 : > "$AGK_TEST_SENT"

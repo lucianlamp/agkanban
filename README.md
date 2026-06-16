@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/lucianlamp/agkanban/actions/workflows/ci.yml/badge.svg)](https://github.com/lucianlamp/agkanban/actions/workflows/ci.yml)
 
-Multi-agent kanban task board that pairs with **[agmsg](https://github.com/fujibee/agmsg)**. State lives in a
-per-team SQLite board; moving a card auto-notifies teammates through agmsg (event-driven).
+Multi-agent kanban task board that pairs with **[agmsg](https://github.com/fujibee/agmsg)**. State lives in
+`~/.agkanban/board.db`; moving a card auto-notifies teammates through agmsg (event-driven).
 Built with bash + sqlite3 — no daemon, no network.
 
 ## Install
@@ -55,7 +55,20 @@ gh skill update
 
 ## Quick start
 
-Invoke through `bash` (skill installers don't preserve the execute bit):
+On Windows / PowerShell / Codex, invoke the installed PowerShell profile function from the
+project directory. It delegates to Git Bash; do not use WSL `bash`:
+
+```powershell
+agkanban add "design API" --assignee codex --reviewer claude
+agkanban claim 1
+agkanban review 1
+agkanban done 1
+agkanban
+agkanban board
+```
+
+On Unix / Git Bash, invoke through `bash` (skill installers don't preserve the execute
+bit):
 
 ```bash
 bash scripts/agkanban.sh add "design API" --assignee codex --reviewer claude

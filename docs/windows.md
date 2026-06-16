@@ -21,13 +21,23 @@ from Git Bash without `set: invalid option` / `$'\r'` failures.
 From PowerShell, in the project directory you joined to the agmsg team:
 
 ```powershell
-# directly via the launcher
+# preferred: profile function installed by scripts/windows/install-agkanban.ps1
+agkanban
+agkanban board
+agkanban add "実装タスク" --assignee codex --reviewer claude
+agkanban claim 1
+agkanban done 1
+
+# fallback: directly via the launcher
 & "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1"            # your open cards
 & "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1" board
 & "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1" add "実装タスク" --assignee codex --reviewer claude
 & "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1" claim 1
 & "$HOME\.agents\skills\agkanban\scripts\windows\agkanban.ps1" done 1
 ```
+
+Do not use WSL `bash` for agkanban on Windows. The PowerShell launcher finds Git Bash,
+sets UTF-8, and keeps the board database on the Windows side.
 
 ### Optional: a short `agkanban` command
 
