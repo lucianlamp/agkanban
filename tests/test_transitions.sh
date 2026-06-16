@@ -213,4 +213,32 @@ out_argv="$(AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" --argv-file "$argvf")"
 assert_contains "$out_argv" "added to dev" "--argv-file decodes and dispatches"
 assert_eq "$(sqlite3 "$TMP/board.db" "SELECT title FROM cards ORDER BY id DESC LIMIT 1;")" "日本語カード" "--argv-file preserves UTF-8 args"
 
+# --- agmsg identity: multiple registrations resolve to the active actas lock ---
+FAKE_AGMSG="$TMP/fake-agmsg"
+mkdir -p "$FAKE_AGMSG/scripts/lib"
+cat > "$FAKE_AGMSG/scripts/whoami.sh" <<'WH'
+#!/usr/bin/env bash
+echo "multiple=true agents=alice,bob teams=dev type=codex project=$1"
+WH
+cat > "$FAKE_AGMSG/scripts/identities.sh" <<'ID'
+#!/usr/bin/env bash
+printf 'dev\talice\n'
+printf 'dev\tbob\n'
+ID
+cat > "$FAKE_AGMSG/scripts/lib/actas-lock.sh" <<'LOCK'
+#!/usr/bin/env bash
+actas_lock_state() {
+  if [ "$1|$2|$3" = "dev|bob|sid-123" ]; then
+    echo "mine"
+  else
+    echo "free"
+  fi
+}
+LOCK
+chmod +x "$FAKE_AGMSG/scripts/whoami.sh" "$FAKE_AGMSG/scripts/identities.sh"
+multi_identity="$(env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG" AGK_SESSION_ID=sid-123 \
+  bash -c 'source "$1"; agmsg_identity; printf "%s|%s" "$AGK_AGENT" "$AGK_TEAM"' _ "$ROOT/scripts/lib/agmsg.sh")"
+assert_eq "$multi_identity" "bob|dev" "multiple agmsg identities resolve via this session's actas lock"
+
 finish

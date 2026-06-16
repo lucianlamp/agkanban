@@ -71,6 +71,19 @@ In a team, `--assignee` / `--reviewer` are agmsg agent names (list them with `/a
 and the board + notifications are shared with teammate agents on the same machine. Run
 agkanban from the project you joined so `whoami` can resolve your identity.
 
+## Codex sandbox setup
+
+agkanban writes outside the project (`~/.agkanban`) and notifies through agmsg
+(`~/.agents/skills/agmsg`). In Codex `workspace-write` sessions, run this once so those
+paths are added to `~/.codex/config.toml` as absolute writable roots:
+
+```bash
+bash ~/.agents/skills/agkanban/scripts/setup-codex-sandbox.sh
+```
+
+Use `--check` to verify without writing, or `--print` to print the TOML block. Restart or
+respawn Codex after changing sandbox configuration.
+
 ## Delivery (awareness)
 
 agkanban has no dedicated monitor. Notifications fired on transitions are delivered by
