@@ -187,9 +187,16 @@ codex --sandbox workspace-write \
   --add-dir "$HOME/.agkanban" --add-dir "$HOME/.agents/skills/agmsg"
 ```
 
-Or use `--sandbox danger-full-access` (or set the equivalent writable roots in
-`~/.codex/config.toml`). A `read-only` sandbox cannot run agkanban's write commands.
-Reads of the skill and agmsg scripts under `~/.agents/skills/` must also be permitted.
+Persistent equivalent in `~/.codex/config.toml`:
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["~/.agkanban", "~/.agents/skills/agmsg"]
+```
+
+Or use `--sandbox danger-full-access`. A `read-only` sandbox cannot run agkanban's write
+commands. (Verified: under `workspace-write` without these roots, `agkanban add` fails with
+*"unable to open database file"*; adding the storage root fixes it.)
 
 ## Windows
 
