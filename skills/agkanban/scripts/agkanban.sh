@@ -2,6 +2,19 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Windows PowerShell shim handoff: when called as `--argv-file <path>`, the file holds
+# one base64-encoded argument per line (UTF-8 safe across the PowerShell->bash boundary).
+# Decode them into the positional parameters, then dispatch normally.
+if [ "${1:-}" = "--argv-file" ]; then
+  argv_file="${2:?--argv-file needs a path}"; shift 2
+  decoded=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] && continue
+    decoded+=("$(printf '%s' "$line" | base64 -d)")
+  done < "$argv_file"
+  if [ "${#decoded[@]}" -gt 0 ]; then set -- "${decoded[@]}" "$@"; fi
+fi
+
 # No args = your assigned cards (doing/review). This is the default behavior.
 # There is no separate 'mine' subcommand (consolidated to avoid confusion).
 if [ "$#" -eq 0 ]; then

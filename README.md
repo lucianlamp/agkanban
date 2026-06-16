@@ -118,6 +118,17 @@ don't use agkanban.
 }
 ```
 
+## Windows
+
+agkanban runs on Windows through **Git Bash**, with a thin PowerShell launcher
+(`scripts/windows/agkanban.ps1`) that hands commands to the Bash dispatcher over a
+UTF-8-safe base64 argv file — no logic is reimplemented in PowerShell (mirrors
+[agmsg PR #128](https://github.com/fujibee/agmsg/pull/128)). See
+[`docs/windows.md`](docs/windows.md) for setup, the optional `agkanban` profile function,
+agent-type selection, and SessionStart hooks on Windows.
+
+> The PowerShell pieces were authored on macOS and still need verification on Windows.
+
 ## Test
 
 ```bash

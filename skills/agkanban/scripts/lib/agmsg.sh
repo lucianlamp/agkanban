@@ -25,7 +25,7 @@ agmsg_identity() {
   if [ -n "${AGK_AGENT:-}" ] && [ -n "${AGK_TEAM:-}" ]; then return 0; fi
   local home out
   home="$(agmsg_home)" || return 1
-  out="$(bash "$home/scripts/whoami.sh" "$(pwd)" ${AGK_TYPE:+"$AGK_TYPE"} 2>/dev/null)" || return 1
+  out="$(bash "$home/scripts/whoami.sh" "${AGKANBAN_PROJECT:-$(pwd)}" ${AGK_TYPE:+"$AGK_TYPE"} 2>/dev/null)" || return 1
   AGK_AGENT="$(printf '%s\n' "$out" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')"
   AGK_TEAM="$(printf '%s\n' "$out" | sed -n 's/.*teams=\([^, ]*\).*/\1/p')"
   [ -n "$AGK_AGENT" ] && [ -n "$AGK_TEAM" ]

@@ -197,4 +197,13 @@ assert_eq "$erc2" "1" "edit by non-creator/non-assignee is refused"
 AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" delete "$oid" >/dev/null
 assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$oid;")" "0" "creator may delete"
 
+# --- Windows PowerShell shim: --argv-file base64 handoff (UTF-8 safe) ---
+argvf="$TMP/argv.txt"; : > "$argvf"
+for a in "add" "日本語カード" "--assignee" "bob"; do
+  printf '%s\n' "$(printf '%s' "$a" | base64)" >> "$argvf"
+done
+out_argv="$(AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" --argv-file "$argvf")"
+assert_contains "$out_argv" "added to dev" "--argv-file decodes and dispatches"
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT title FROM cards ORDER BY id DESC LIMIT 1;")" "日本語カード" "--argv-file preserves UTF-8 args"
+
 finish
