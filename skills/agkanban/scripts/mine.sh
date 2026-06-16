@@ -35,9 +35,12 @@ printf '%s\n' "$rows"
 # Call to action: this is a prompt to work the cards, not just report them.
 cat <<'EOF'
 
-→ ACT ON THESE NOW — do not just list or summarize them. For each card:
+→ ACT ON THESE NOW — do not just list or summarize them.
+  RULE: before doing ANY work on a [todo] card assigned to you, CLAIM it first
+  (claim moves it to doing and notifies the team it is in progress). Never start a
+  todo card unclaimed. For each card:
   - read details first:  bash scripts/agkanban.sh show <id>
-  - [todo]   claim it, then do the work:   bash scripts/agkanban.sh claim <id>
-  - [doing]  keep going; when ready:        bash scripts/agkanban.sh review <id>
-  - [review] perform the review, then:      bash scripts/agkanban.sh done <id>   (or report a blocker to the requester via agmsg)
+  - [todo]   claim BEFORE starting work:    bash scripts/agkanban.sh claim <id>
+  - [doing]  keep going; when ready:         bash scripts/agkanban.sh review <id>
+  - [review] perform the review, then:       bash scripts/agkanban.sh done <id>   (or report a blocker to the requester via agmsg)
 EOF

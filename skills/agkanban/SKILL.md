@@ -24,9 +24,11 @@ cards — todo/doing/review assigned to you (everything but done)** (there is no
 **Viewing your cards is a call to act, not just to report** (like agmsg's "read and
 respond"). When you run `agkanban` with no args — or when the SessionStart hook surfaces
 your cards — work them: for each card read `show <id>` for the `--body` (target files +
-acceptance criteria), then `claim` a todo and do the work, move `doing → review` when
-ready, and as reviewer do the review and `done` it (or report a blocker to the requester
-via agmsg). Do not stop at listing or summarizing them.
+acceptance criteria), then start. **Always `claim` a todo card before doing any work on
+it** — claim moves it to `doing` and notifies the team that it is in progress; never work
+a todo card unclaimed. Move `doing → review` when ready, and as reviewer do the review and
+`done` it (or report a blocker to the requester via agmsg). Do not stop at listing or
+summarizing them.
 
 | Command | Action |
 |---|---|
