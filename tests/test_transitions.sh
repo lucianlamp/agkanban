@@ -241,4 +241,51 @@ multi_identity="$(env -u AGK_AGENT -u AGK_TEAM \
   bash -c 'source "$1"; agmsg_identity; printf "%s|%s" "$AGK_AGENT" "$AGK_TEAM"' _ "$ROOT/scripts/lib/agmsg.sh")"
 assert_eq "$multi_identity" "bob|dev" "multiple agmsg identities resolve via this session's actas lock"
 
+# --- --agent override: usable when agmsg identity is unresolved (multiple agents, same project) ---
+FAKE_AGMSG2="$TMP/fake-agmsg2"
+mkdir -p "$FAKE_AGMSG2/scripts"
+# whoami.sh returns multiple=true with no resolvable actas lock (no actas-lock.sh)
+cat > "$FAKE_AGMSG2/scripts/whoami.sh" <<'WH2'
+#!/usr/bin/env bash
+echo "multiple=true agents=alice,bob teams=dev type=codex project=$1"
+WH2
+chmod +x "$FAKE_AGMSG2/scripts/whoami.sh"
+
+# mine --agent: resolves to the given name even when whoami can't pick one
+out_mine_agent="$(env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG2" AGKANBAN_STORAGE_PATH="$TMP" \
+  bash "$AGK" --agent alice 2>&1)" || true
+assert_contains "$out_mine_agent" "alice" "--agent overrides unresolved identity in default (mine) command"
+
+# Add a card as alice to test --agent on claim/edit/delete
+oa2="$(AGK_AGENT=alice AGK_TEAM=dev bash "$AGK" add "agent-override-test")"
+oid2="$(printf '%s\n' "$oa2" | grep -o 'card-[0-9]*' | grep -o '[0-9]*')"
+
+# claim --agent: claims card as the overridden agent
+out_claim_agent="$(env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG2" AGKANBAN_STORAGE_PATH="$TMP" \
+  bash "$AGK" claim "$oid2" --team dev --agent alice 2>&1)"
+assert_contains "$out_claim_agent" "claimed by alice" "--agent on claim acts as the given agent"
+
+# edit --agent: creator overrides are respected
+out_edit_agent="$(env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG2" AGKANBAN_STORAGE_PATH="$TMP" \
+  bash "$AGK" edit "$oid2" --team dev --agent alice --title "agent-override-edited" 2>&1)"
+assert_contains "$out_edit_agent" "updated" "--agent on edit passes authorization"
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT title FROM cards WHERE id=$oid2;")" "agent-override-edited" "--agent edit actually changed the title"
+
+# edit --agent bob (non-creator, non-assignee) must be refused
+set +e
+out_edit_bad="$(env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG2" AGKANBAN_STORAGE_PATH="$TMP" \
+  bash "$AGK" edit "$oid2" --team dev --agent bob --title "hacked" 2>&1)"; erc_bad=$?
+set -e
+assert_eq "$erc_bad" "1" "--agent with wrong identity is still refused by authorization guard"
+
+# delete --agent: creator may delete
+env -u AGK_AGENT -u AGK_TEAM \
+  AGMSG_HOME="$FAKE_AGMSG2" AGKANBAN_STORAGE_PATH="$TMP" \
+  bash "$AGK" delete "$oid2" --team dev --agent alice >/dev/null
+assert_eq "$(sqlite3 "$TMP/board.db" "SELECT count(*) FROM cards WHERE id=$oid2;")" "0" "--agent on delete: creator may delete"
+
 finish

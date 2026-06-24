@@ -46,15 +46,15 @@ summarizing them.
 | `agkanban` | Your open cards (todo/doing/review assigned to you) |
 | `agkanban board` | Full team board |
 | `agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."]` | Add card (todo) |
-| `agkanban claim <id>` | Claim (doing, assign to self, atomic) |
+| `agkanban claim <id> [--agent A]` | Claim (doing, assign to self, atomic) |
 | `agkanban review <id>` | Request review (move to review) |
 | `agkanban done <id>` | Mark done |
 | `agkanban reopen <id>` | Reopen (back to todo) |
 | `agkanban move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
 | `agkanban show <id>` | Card detail + event history |
 | `agkanban block <id> --by <id2> [--by <id3> …]` | Add dependency(ies) — `--by` is repeatable for multiple prerequisites |
-| `agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."]` | Edit card fields — **creator or assignee only** (empty value clears; title can't be empty) |
-| `agkanban delete <id>` | Permanently delete a card (alias `rm`) — **creator only**; also clears dangling `blocked_by` |
+| `agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."] [--agent A]` | Edit card fields — **creator or assignee only** (empty value clears; title can't be empty) |
+| `agkanban delete <id> [--agent A]` | Permanently delete a card (alias `rm`) — **creator only**; also clears dangling `blocked_by` |
 
 `claim`/`review`/`done`/`reopen` are intent-specific transition verbs; internally they
 perform the same column move + agmsg auto-notification as `move`. Use `move` only when
@@ -66,6 +66,10 @@ card that represents real work, put the target files/paths and acceptance criter
 `agkanban show <id>` on Windows/PowerShell, or with the Bash entrypoint on Unix/Git Bash.
 
 Pass `--team <name>` on each command when you belong to multiple teams.
+
+Pass `--agent <name>` on `agkanban` (no-arg), `claim`, `edit`, and `delete` when multiple
+agents share one project directory and identity cannot be auto-resolved (`agent unresolved`
+error). This mirrors `--team` and takes priority over `agmsg whoami` output.
 
 In a team, `--assignee` / `--reviewer` are agmsg agent names (list them with `/agmsg team`),
 and the board + notifications are shared with teammate agents on the same machine. Run
