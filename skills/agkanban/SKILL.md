@@ -52,7 +52,7 @@ summarizing them.
 | `agkanban reopen <id>` | Reopen (back to todo) |
 | `agkanban move <id> <todo\|doing\|review\|done>` | Generic: move to any column (fallback for the above verbs) |
 | `agkanban show <id>` | Card detail + event history |
-| `agkanban block <id> --by <id2>` | Set dependency |
+| `agkanban block <id> --by <id2> [--by <id3> …]` | Add dependency(ies) — `--by` is repeatable for multiple prerequisites |
 | `agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."]` | Edit card fields — **creator or assignee only** (empty value clears; title can't be empty) |
 | `agkanban delete <id>` | Permanently delete a card (alias `rm`) — **creator only**; also clears dangling `blocked_by` |
 
@@ -112,6 +112,6 @@ unresolved or there are no cards). Example config (`~/.claude/settings.json`):
 | → doing | assignee |
 | → review | reviewer (falls back to creator) |
 | → done | creator (+ assignee if different) |
-| dependency done | assignee of the waiting card |
+| all deps done | assignee of the waiting card (fires only once *every* dependency is done) |
 
 Notifications to yourself are suppressed.
