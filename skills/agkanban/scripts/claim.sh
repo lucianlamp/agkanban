@@ -5,10 +5,11 @@ source "$DIR/lib/storage.sh"
 source "$DIR/lib/agmsg.sh"
 source "$DIR/lib/events.sh"
 
-TEAM_OVERRIDE=""; ID_ARG=""
+TEAM_OVERRIDE=""; AGENT_OVERRIDE=""; ID_ARG=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --team) TEAM_OVERRIDE="$2"; shift 2 ;;
+    --team)  TEAM_OVERRIDE="$2";  shift 2 ;;
+    --agent) AGENT_OVERRIDE="$2"; shift 2 ;;
     *) if [ -z "$ID_ARG" ]; then ID_ARG="$1"; else echo "agkanban claim: unexpected arg: $1" >&2; exit 2; fi; shift ;;
   esac
 done
@@ -16,9 +17,9 @@ num="$(card_num "$ID_ARG")" || exit 2
 
 ensure_db
 agmsg_identity || true
-me="${AGK_AGENT:-}"
+me="${AGENT_OVERRIDE:-${AGK_AGENT:-}}"
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
-[ -z "$me" ] && { echo "agkanban claim: agent unresolved (join agmsg)" >&2; exit 1; }
+[ -z "$me" ] && { echo "agkanban claim: agent unresolved (join agmsg or pass --agent)" >&2; exit 1; }
 [ -z "$team" ] && { echo "agkanban claim: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
 
 # Pre-transition data (title, current column). If missing: not found.

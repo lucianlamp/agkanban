@@ -4,10 +4,11 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$DIR/lib/storage.sh"
 source "$DIR/lib/agmsg.sh"
 
-TEAM_OVERRIDE=""; ID_ARG=""
+TEAM_OVERRIDE=""; AGENT_OVERRIDE=""; ID_ARG=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --team) TEAM_OVERRIDE="$2"; shift 2 ;;
+    --team)  TEAM_OVERRIDE="$2";  shift 2 ;;
+    --agent) AGENT_OVERRIDE="$2"; shift 2 ;;
     *) if [ -z "$ID_ARG" ]; then ID_ARG="$1"; else echo "agkanban delete: unexpected arg: $1" >&2; exit 2; fi; shift ;;
   esac
 done
@@ -17,8 +18,8 @@ ensure_db
 agmsg_identity || true
 team="${TEAM_OVERRIDE:-${AGK_TEAM:-}}"
 [ -z "$team" ] && { echo "agkanban delete: team unresolved (join agmsg or pass --team)" >&2; exit 1; }
-me="${AGK_AGENT:-}"
-[ -z "$me" ] && { echo "agkanban delete: agent unresolved (join agmsg) — needed to verify you are the creator" >&2; exit 1; }
+me="${AGENT_OVERRIDE:-${AGK_AGENT:-}}"
+[ -z "$me" ] && { echo "agkanban delete: agent unresolved (join agmsg or pass --agent) — needed to verify you are the creator" >&2; exit 1; }
 t="$(sql_escape "$team")"
 
 # Authorization: only the card's creator may delete it (cooperative guard, identity

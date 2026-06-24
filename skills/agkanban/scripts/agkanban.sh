@@ -16,10 +16,17 @@ if [ "${1:-}" = "--argv-file" ]; then
   if [ "${#decoded[@]}" -gt 0 ]; then set -- "${decoded[@]}" "$@"; fi
 fi
 
-# No args = your assigned cards (doing/review). This is the default behavior.
-# There is no separate 'mine' subcommand (consolidated to avoid confusion).
+# No args (or only identity flags) = your assigned cards (doing/review).
+# Collect leading --agent/--team flags so `agkanban --agent alice` dispatches to mine.
+_MINE_FLAGS=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --agent|--team) _MINE_FLAGS+=("$1" "$2"); shift 2 ;;
+    *) break ;;
+  esac
+done
 if [ "$#" -eq 0 ]; then
-  exec bash "$DIR/mine.sh"
+  exec bash "$DIR/mine.sh" "${_MINE_FLAGS[@]+"${_MINE_FLAGS[@]}"}"
 fi
 
 sub="$1"; shift
@@ -46,15 +53,16 @@ agkanban — kanban task management paired with agmsg
   agkanban                       your open cards (todo/doing/review)
   agkanban board                 full team board
   agkanban add "<title>" [--assignee X] [--reviewer Y] [--body "..."] [--team T]
-  agkanban claim <id> [--team T]    claim (doing, assign to self)
-  agkanban review <id> [--team T]   request review (move to review)
-  agkanban done <id> [--team T]     mark done
-  agkanban reopen <id> [--team T]   reopen (back to todo)
+  agkanban claim <id> [--team T] [--agent A]    claim (doing, assign to self)
+  agkanban review <id> [--team T]               request review (move to review)
+  agkanban done <id> [--team T]                 mark done
+  agkanban reopen <id> [--team T]               reopen (back to todo)
   agkanban move <id> <todo|doing|review|done> [--team T]   generic (any column)
   agkanban show <id> [--team T]
   agkanban block <id> --by <id2> [--team T]
-  agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."] [--team T]
-  agkanban delete <id> [--team T]  permanently delete a card (alias: rm)
+  agkanban edit <id> [--title T] [--assignee X] [--reviewer Y] [--body "..."] [--team T] [--agent A]
+  agkanban delete <id> [--team T] [--agent A]   permanently delete a card (alias: rm)
+  agkanban [--agent A]                          your open cards (no args; --agent overrides identity)
 USAGE
     ;;
   *) echo "agkanban: unknown subcommand: $sub" >&2; exit 2 ;;
